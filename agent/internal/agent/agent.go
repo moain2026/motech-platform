@@ -102,11 +102,9 @@ func (a *Agent) JoinNetbird() error {
 	if a.state == nil || a.state.NetbirdKey == "" {
 		return fmt.Errorf("no netbird setup key (register first)")
 	}
-	path, err := exec.LookPath("netbird")
+	path, err := a.EnsureNetbirdInstalled()
 	if err != nil {
-		log.Printf("netbird CLI not found — install it, then run: netbird up --setup-key %s --management-url %s",
-			mask(a.state.NetbirdKey), a.state.NetbirdAPIURL)
-		return nil
+		return fmt.Errorf("تعذّر تثبيت NetBird تلقائياً: %w", err)
 	}
 	args := []string{"up", "--setup-key", a.state.NetbirdKey}
 	if a.state.NetbirdAPIURL != "" {
@@ -221,9 +219,3 @@ func (a *Agent) applyCommands(cmds map[string]any) {
 	}
 }
 
-func mask(s string) string {
-	if len(s) <= 8 {
-		return "****"
-	}
-	return s[:4] + "..." + s[len(s)-4:]
-}
