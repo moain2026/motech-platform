@@ -15,6 +15,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -40,6 +41,7 @@ func main() {
 				log.Printf("PANIC in run: %v", r)
 			}
 		}()
+		log.Printf("run: starting (logToFile active)")
 		ag := agent.New(envOr("MOTECH_SERVER", "http://127.0.0.1:8080"))
 		if err := ag.RunService(); err != nil {
 			log.Printf("run: %v", err)
@@ -94,19 +96,37 @@ func usage() {
 
 // logToFile redirects the standard logger to a file next to the executable's
 // stable data dir, with an absolute path (service working dir is System32).
+//
+// CRITICAL under Windows SYSTEM/Session 0: there is NO stdout/stderr handle, so
+// the default logger (which writes to os.Stderr) can KILL the process on the
+// first log call. We therefore ALWAYS redirect away from stderr: to the file if
+// we can open it, otherwise to io.Discard. We never leave the logger on stderr.
 func logToFile() {
-	dir := os.Getenv("ProgramData")
-	if dir == "" {
-		dir = `C:\ProgramData`
+	// Default to discard FIRST so any early failure can't touch stderr.
+	log.SetOutput(io.Discard)
+
+	candidates := []string{}
+	if pd := os.Getenv("ProgramData"); pd != "" {
+		candidates = append(candidates, filepath.Join(pd, "Motech"))
 	}
-	logDir := filepath.Join(dir, "Motech")
-	_ = os.MkdirAll(logDir, 0o755)
-	f, err := os.OpenFile(filepath.Join(logDir, "agent.log"),
-		os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
-	if err != nil {
+	candidates = append(candidates, `C:\ProgramData\Motech`, os.TempDir())
+
+	for _, logDir := range candidates {
+		if logDir == "" {
+			continue
+		}
+		if err := os.MkdirAll(logDir, 0o755); err != nil {
+			continue
+		}
+		f, err := os.OpenFile(filepath.Join(logDir, "agent.log"),
+			os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+		if err != nil {
+			continue
+		}
+		log.SetOutput(f) // file ONLY — never os.Stderr under a service
 		return
 	}
-	log.SetOutput(f) // file ONLY — never os.Stdout under a service
+	// stays on io.Discard if no writable location was found
 }
 
 func envOr(k, d string) string {

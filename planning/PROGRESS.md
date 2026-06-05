@@ -145,3 +145,9 @@
 - الدورة الكاملة من رابط واحد → online نجحت. نظّفت العميل القديم (عميل واحد نظيف: MoTech-setup-e2e online).
 
 ### Commits: c6a5cf5 (signing chain fix) + سابقاتها
+
+## 2026-06-05 (Session 2 — Private Key المرحلة 4 على جهاز المستخدم)
+- نشرت النموذج backend-owned على جهاز المستخدم عبر MoTech-prod (عميل نظيف، الـbackend ولّد المفتاح).
+- **bug حقيقي مكتشف**: جهاز المستخدم **يحجب SYSTEM scheduled tasks** (probe بسيط echo>file كـSYSTEM ما اشتغل، Last Result 267011). مو bug بكودنا.
+  - الإصلاح: المهمة المجدولة تشتغل الآن كـ**المستخدم التفاعلي (Moain)** عبر LogonTrigger+BootTrigger + InteractiveToken. العملية تبقى حية (PID ثابت، Session 5). + صلّبت logToFile (io.Discard fallback، ما تلمس stderr أبداً).
+- E2E نجح على جهازه: SSH من Azure→MoTech بمفتاح Dashboard (motech\administrator @ MoTech) ✓، تدوير من Dashboard→المفتاح القديم رُفض، الجديد اشتغل ✓، عميل واحد + مفتاح واحد + log نظيف (0 errors).

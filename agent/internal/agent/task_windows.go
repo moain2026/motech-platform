@@ -29,6 +29,10 @@ const taskXMLTemplate = `<?xml version="1.0" encoding="UTF-16"?>
     <URI>\MotechConnectAgent</URI>
   </RegistrationInfo>
   <Triggers>
+    <LogonTrigger>
+      <Enabled>true</Enabled>
+      <Delay>PT15S</Delay>
+    </LogonTrigger>
     <BootTrigger>
       <Enabled>true</Enabled>
       <Delay>PT1M</Delay>
@@ -36,7 +40,8 @@ const taskXMLTemplate = `<?xml version="1.0" encoding="UTF-16"?>
   </Triggers>
   <Principals>
     <Principal id="Author">
-      <UserId>S-1-5-18</UserId>
+      <UserId>%USERID%</UserId>
+      <LogonType>InteractiveToken</LogonType>
       <RunLevel>HighestAvailable</RunLevel>
     </Principal>
   </Principals>
@@ -69,16 +74,39 @@ const taskXMLTemplate = `<?xml version="1.0" encoding="UTF-16"?>
   </Actions>
 </Task>`
 
+// currentTaskUser returns the identity the scheduled task should run as.
+// We run as the INTERACTIVE USER (not SYSTEM): on some hardened machines SYSTEM
+// scheduled tasks are blocked by policy/AV, and the agent only needs user-level
+// rights (it writes to administrators_authorized_keys via an elevated run level
+// and talks to the NetBird daemon which is its own service). Falls back to the
+// USERNAME/USERDOMAIN env vars.
+func currentTaskUser() string {
+	if out, err := exec.Command("whoami").Output(); err == nil {
+		if u := strings.TrimSpace(string(out)); u != "" {
+			return u // e.g. "motech\\moain"
+		}
+	}
+	dom := os.Getenv("USERDOMAIN")
+	user := os.Getenv("USERNAME")
+	if dom != "" && user != "" {
+		return dom + "\\" + user
+	}
+	return user
+}
+
 // installScheduledTask registers a Scheduled Task (via XML) to run the agent at
-// boot under SYSTEM. The XML approach lets us set RestartOnFailure,
-// StartWhenAvailable and ExecutionTimeLimit which the bare flags cannot express.
+// logon/boot as the INTERACTIVE USER. The XML approach lets us set
+// RestartOnFailure, StartWhenAvailable and ExecutionTimeLimit which the bare
+// flags cannot express.
 func installScheduledTask(exePath string) error {
 	if exePath == "" {
 		return fmt.Errorf("empty exe path")
 	}
 	_ = exec.Command("schtasks", "/Delete", "/TN", taskName, "/F").Run()
 
+	user := currentTaskUser()
 	xml := strings.ReplaceAll(taskXMLTemplate, "%EXE%", exePath)
+	xml = strings.ReplaceAll(xml, "%USERID%", user)
 
 	// Write the XML as UTF-16LE with BOM (Task Scheduler expects this for /XML).
 	tmp := filepath.Join(os.TempDir(), "motech-task.xml")
