@@ -1,9 +1,13 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl" :class="dark ? 'dark' : ''">
+<html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Al-Abbasi Soft — لوحة التحكم</title>
+  <!-- Favicon: the Motech shield logo (inline SVG data URI) -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Cdefs%3E%3ClinearGradient%20id='g'%20x1='0'%20y1='0'%20x2='1'%20y2='1'%3E%3Cstop%20offset='0'%20stop-color='%230f172a'/%3E%3Cstop%20offset='1'%20stop-color='%231e293b'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath%20d='M32%204%2056%2014V32C56%2047%2045%2056%2032%2060%2019%2056%208%2047%208%2032V14L32%204Z'%20fill='url(%23g)'%20stroke='%2310b981'%20stroke-width='2'/%3E%3Ccircle%20cx='32'%20cy='26'%20r='4'%20fill='%2310b981'/%3E%3Ccircle%20cx='22'%20cy='40'%20r='3'%20fill='%2334d399'/%3E%3Ccircle%20cx='42'%20cy='40'%20r='3'%20fill='%2334d399'/%3E%3Cpath%20d='M32%2030%2024%2038M32%2030%2040%2038'%20stroke='%2334d399'%20stroke-width='2'%20stroke-linecap='round'/%3E%3C/svg%3E" />
+  <!-- Apply saved theme BEFORE render to avoid flash -->
+  <script>(function(){try{if(localStorage.getItem('motech_dark')==='1')document.documentElement.classList.add('dark');}catch(e){}})();</script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -27,9 +31,35 @@
     ::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:8px}
     .dark ::-webkit-scrollbar-thumb{background:#334155}
     .fade-enter{animation:fade .25s ease}@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1}}
+
+    /* ===== Luxury layered background (light + dark) ===== */
+    body.app-bg{
+      background-color:#eef2f9;
+      background-image:
+        radial-gradient(ellipse 80% 60% at 85% -10%, rgba(16,185,129,.18), transparent 60%),
+        radial-gradient(ellipse 70% 60% at 0% 0%, rgba(59,91,219,.16), transparent 55%),
+        radial-gradient(ellipse 90% 70% at 50% 120%, rgba(16,185,129,.10), transparent 60%);
+      background-attachment:fixed;
+    }
+    .dark body.app-bg, body.app-bg.dark{ }
+    .dark.app-bg, html.dark body.app-bg{
+      background-color:#070b16;
+      background-image:
+        radial-gradient(ellipse 80% 60% at 85% -10%, rgba(16,185,129,.16), transparent 60%),
+        radial-gradient(ellipse 70% 60% at 0% 0%, rgba(59,91,219,.18), transparent 55%),
+        radial-gradient(ellipse 90% 70% at 50% 120%, rgba(16,185,129,.08), transparent 60%);
+    }
+    /* subtle fine grid overlay for a premium, technical feel */
+    body.app-bg::before{
+      content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+      background-image:linear-gradient(rgba(15,23,42,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(15,23,42,.035) 1px,transparent 1px);
+      background-size:34px 34px;mask-image:radial-gradient(ellipse 70% 60% at 50% 20%,#000,transparent 80%);
+    }
+    html.dark body.app-bg::before{background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);}
+    body.app-bg > *{position:relative;z-index:1}
   </style>
 </head>
-<body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors"
+<body class="app-bg text-slate-800 dark:text-slate-100 transition-colors"
       x-data="app()" x-init="init()">
 
 <!-- ============ LOGIN ============ -->
@@ -52,7 +82,7 @@
       <svg x-show="loading" class="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg>
       <span x-text="loading?'جارٍ الدخول...':'دخول'"></span>
     </button>
-    <button type="button" @click="dark=!dark;saveDark()" class="w-full text-sm text-slate-400 hover:text-brand-500 transition" x-text="dark?'☀️ الوضع الفاتح':'🌙 الوضع الداكن'"></button>
+    <button type="button" @click="toggleDark()" class="w-full text-sm text-slate-400 hover:text-brand-500 transition" x-text="dark?'☀️ الوضع الفاتح':'🌙 الوضع الداكن'"></button>
   </form>
 </div>
 
@@ -98,7 +128,7 @@
         <h1 class="text-lg font-bold" x-text="nav.find(n=>n.id===page)?.label"></h1>
       </div>
       <div class="flex items-center gap-1">
-        <button @click="dark=!dark;saveDark()" class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition text-slate-500" x-html="dark?sun:moon"></button>
+        <button @click="toggleDark()" title="تبديل الوضع" class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition text-slate-500" x-html="dark?sun:moon"></button>
         <button @click="refresh()" title="تحديث" class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition text-slate-500" x-html="ic.rotate"></button>
       </div>
     </header>
@@ -415,12 +445,15 @@ function app(){
       {id:'settings',label:'الإعدادات',icon:this.ic.settings},
     ]},
     async init(){
+      this.applyDark();
       const h=new URLSearchParams(location.hash.slice(1)).get('t');
       if(h){localStorage.setItem('motech_token',h);history.replaceState(null,'',location.pathname);}
       if(this.token){await this.health();await this.refresh();}
     },
+    applyDark(){ document.documentElement.classList.toggle('dark', !!this.dark); },
+    toggleDark(){ this.dark=!this.dark; this.applyDark(); this.saveDark(); },
     hdr(){return{'Content-Type':'application/json','Authorization':'Bearer '+this.token}},
-    logoSVG(s){return `<svg width="${s}" height="${s}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M32 4 56 14V32C56 47 45 56 32 60 19 56 8 47 8 32V14L32 4Z" fill="#0f172a"/><path d="M32 4 56 14V32C56 47 45 56 32 60 19 56 8 47 8 32V14L32 4Z" stroke="#10b981" stroke-width="2"/><circle cx="32" cy="26" r="4" fill="#10b981"/><circle cx="22" cy="40" r="3" fill="#34d399"/><circle cx="42" cy="40" r="3" fill="#34d399"/><path d="M32 30 24 38M32 30 40 38" stroke="#34d399" stroke-width="2" stroke-linecap="round"/></svg>`},
+    logoSVG(s){const u='lg'+Math.random().toString(36).slice(2,7);return `<svg width="${s}" height="${s}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="${u}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0f172a"/><stop offset="1" stop-color="#1e293b"/></linearGradient><radialGradient id="${u}g" cx="50%" cy="38%" r="55%"><stop offset="0" stop-color="#10b981" stop-opacity=".25"/><stop offset="1" stop-color="#10b981" stop-opacity="0"/></radialGradient></defs><path d="M32 4 56 14V32C56 47 45 56 32 60 19 56 8 47 8 32V14L32 4Z" fill="url(#${u})" stroke="#10b981" stroke-width="2"/><path d="M32 4 56 14V32C56 47 45 56 32 60 19 56 8 47 8 32V14L32 4Z" fill="url(#${u}g)"/><circle cx="32" cy="26" r="4" fill="#10b981"/><circle cx="22" cy="40" r="3" fill="#34d399"/><circle cx="42" cy="40" r="3" fill="#34d399"/><path d="M32 30 24 38M32 30 40 38" stroke="#34d399" stroke-width="2" stroke-linecap="round"/></svg>`},
     async health(){try{const r=await fetch('/health');const j=await r.json();this.nbMode=j.netbird_mode}catch(e){}},
     async login(){
       this.loading=true;
