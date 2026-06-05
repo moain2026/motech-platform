@@ -107,12 +107,12 @@
   <script>
     function app() {
       return {
-        token: localStorage.getItem('motech_token') || '',
+        token: (new URLSearchParams(location.hash.slice(1)).get('t')) || localStorage.getItem('motech_token') || '',
         email:'', password:'', error:'',
         clients: [], nbMode:'-',
         showAdd:false, created:null,
         form:{name:'',branch:'',contact_name:'',contact_phone:''},
-        async init(){ if(this.token){ await this.health(); await this.load(); } },
+        async init(){ const h=new URLSearchParams(location.hash.slice(1)).get('t'); if(h){ localStorage.setItem('motech_token',h); history.replaceState(null,'',location.pathname); } if(this.token){ await this.health(); await this.load(); } },
         hdr(){ return { 'Content-Type':'application/json', 'Authorization':'Bearer '+this.token }; },
         async health(){ try{ const r=await fetch('/health'); const j=await r.json(); this.nbMode=j.netbird_mode; }catch(e){} },
         async login(){
