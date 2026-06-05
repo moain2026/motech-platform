@@ -109,6 +109,11 @@ func (a *Agent) RunService() error {
 // is far more reliable than a Go Windows-service for a long-running poll loop.
 // It also installs the kardianos service as a best-effort fallback.
 func (a *Agent) InstallService() error {
+	// Stop any prior task/process so the stable exe isn't locked during copy.
+	if runtime.GOOS == "windows" {
+		_ = uninstallScheduledTask()
+		stopRunningAgent()
+	}
 	exePath, err := installSelfToStableLocation()
 	if err != nil || exePath == "" {
 		log.Printf("warn: copy to stable location failed: %v", err)
