@@ -151,3 +151,10 @@
 - **bug حقيقي مكتشف**: جهاز المستخدم **يحجب SYSTEM scheduled tasks** (probe بسيط echo>file كـSYSTEM ما اشتغل، Last Result 267011). مو bug بكودنا.
   - الإصلاح: المهمة المجدولة تشتغل الآن كـ**المستخدم التفاعلي (Moain)** عبر LogonTrigger+BootTrigger + InteractiveToken. العملية تبقى حية (PID ثابت، Session 5). + صلّبت logToFile (io.Discard fallback، ما تلمس stderr أبداً).
 - E2E نجح على جهازه: SSH من Azure→MoTech بمفتاح Dashboard (motech\administrator @ MoTech) ✓، تدوير من Dashboard→المفتاح القديم رُفض، الجديد اشتغل ✓، عميل واحد + مفتاح واحد + log نظيف (0 errors).
+
+## 2026-06-05 (Session 2 — نشر على GitHub)
+- repo خاص: github.com/MoTechSys/motech-platform (التوكن المخزّن لـ MoTechSys مو moain2026 — صحّحت الـremote).
+- أمان: فحص history كامل — لا PAT/passwords/private keys/tokens. .gitignore صلّب (*.env, *.key, ca.key, *.pem, *.pfx, *.exe, logs, .vscode/.idea). المفاتيح العامة فقط (ca.crt/leaf) في git.
+- أضفت: LICENSE (proprietary — Al-Abbasi Soft)، root SECURITY.md، README + Mermaid architecture + Features.
+- أزلت ملف bogus متعقّب "C:\ProgramData\..\agent.log" (artifact من اختبار linux).
+- push: main + tag v1.0.0 + GitHub Release "v1.0.0 — MVP Complete". 36 commits، 63 files، private.
