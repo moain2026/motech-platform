@@ -383,8 +383,15 @@ func (h *Handler) AgentHeartbeat(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if req.RotatedOK {
-		_, _ = h.DB.Exec(`UPDATE ssh_keys SET rotated_at=now() WHERE client_id=$1 AND active=true AND rotated_at IS NULL`, clientID)
-		h.logActivity("agent", "agent.rotated_applied", &clientID, nil)
+		// Only log when we actually flip an unconfirmed key to confirmed; the
+		// agent keeps sending rotated_ok=true every heartbeat, so without this
+		// guard we'd spam agent.rotated_applied into the activity log forever.
+		res, _ := h.DB.Exec(`UPDATE ssh_keys SET rotated_at=now() WHERE client_id=$1 AND active=true AND rotated_at IS NULL`, clientID)
+		if res != nil {
+			if n, _ := res.RowsAffected(); n > 0 {
+				h.logActivity("agent", "agent.rotated_applied", &clientID, nil)
+			}
+		}
 	}
 
 	if status != "disabled" {

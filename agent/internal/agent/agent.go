@@ -23,6 +23,7 @@ type Agent struct {
 	Server string
 	http   *http.Client
 	state  *State
+	tokens *TokenManager
 }
 
 // State is persisted locally after registration.
@@ -47,7 +48,25 @@ func New(server string) *Agent {
 	if a.state != nil && a.state.Server != "" {
 		a.Server = a.state.Server
 	}
+	initTok := ""
+	if a.state != nil {
+		initTok = a.state.AgentToken
+	}
+	a.tokens = NewTokenManager(initTok)
 	return a
+}
+
+// authToken returns the freshest known agent token (TTL-cached, disk-backed).
+func (a *Agent) authToken() string {
+	if a.tokens != nil {
+		if t := a.tokens.Get(); t != "" {
+			return t
+		}
+	}
+	if a.state != nil {
+		return a.state.AgentToken
+	}
+	return ""
 }
 
 // statePath returns the OS-appropriate config file path.
@@ -169,31 +188,73 @@ func (a *Agent) SetupAccess() error {
 
 // Heartbeat sends one heartbeat (reporting peer_id + public key) and returns
 // the pending-commands response.
+//
+// On a 401 ("unknown client") it re-reads the token from disk EXACTLY ONCE and
+// retries — this recovers from a stale in-memory token (e.g. the run-loop loaded
+// the token before register finished writing agent.json). If the reloaded token
+// is unchanged, it does NOT retry (avoids a pointless second call / loop).
 func (a *Agent) Heartbeat() (map[string]any, error) {
-	if a.state == nil || a.state.AgentToken == "" {
+	if a.authToken() == "" {
 		return nil, fmt.Errorf("not registered")
+	}
+
+	out, status, err := a.sendHeartbeat(a.authToken())
+	if err == nil {
+		return out, nil
+	}
+	if status != http.StatusUnauthorized {
+		return nil, err // network or non-401 error: surface as-is
+	}
+
+	// 401 path: reload token from disk once and decide whether to retry.
+	newTok, changed := a.tokens.ForceReload()
+	if !changed {
+		logTokenEvent("401→reload", "token unchanged → no retry")
+		return nil, err
+	}
+	logTokenEvent("401→reload", "token changed → retrying once")
+	if a.state != nil {
+		a.state.AgentToken = newTok // keep state in sync for other callers
+	}
+	out, status, err = a.sendHeartbeat(newTok)
+	if err == nil {
+		logTokenEvent("401→reload→retry", "result=OK")
+		return out, nil
+	}
+	logTokenEvent("401→reload→retry", fmt.Sprintf("result=FAIL status=%d", status))
+	return nil, err
+}
+
+// sendHeartbeat performs one heartbeat POST with the given token. It returns the
+// decoded body, the HTTP status (0 on transport error), and an error.
+func (a *Agent) sendHeartbeat(token string) (map[string]any, int, error) {
+	var pub, priv string
+	var rotated bool
+	if a.state != nil {
+		pub, priv = a.state.SSHPublicKey, a.state.SSHPrivateKey
+		rotated = a.state.RotatePending && a.state.RotateApplied
 	}
 	payload := map[string]any{
 		"peer_id":     netbirdPeerIP(),
-		"public_key":  a.state.SSHPublicKey,
-		"private_key": a.state.SSHPrivateKey,
-		"rotated_ok":  a.state.RotatePending && a.state.RotateApplied,
+		"public_key":  pub,
+		"private_key": priv,
+		"rotated_ok":  rotated,
 	}
 	body, _ := json.Marshal(payload)
 	req, _ := http.NewRequest(http.MethodPost, a.Server+"/api/agent/heartbeat", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+a.state.AgentToken)
+	req.Header.Set("Authorization", "Bearer "+token)
 	resp, err := a.http.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("heartbeat %d: %s", resp.StatusCode, string(b))
+		return nil, resp.StatusCode, fmt.Errorf("heartbeat %d: %s", resp.StatusCode, string(b))
 	}
 	var out map[string]any
-	return out, json.NewDecoder(resp.Body).Decode(&out)
+	return out, resp.StatusCode, json.NewDecoder(resp.Body).Decode(&out)
 }
 
 // loop runs the heartbeat cycle until stop is closed.
