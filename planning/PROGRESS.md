@@ -108,3 +108,23 @@
 
 ### Commits
 2c7ab14, 98bde57, 7d29789, 0402a06, 86ed5d7
+
+## 2026-06-05 (Session 2 — تطوير ذاتي بدون توقف)
+قاعدة جديدة من المستخدم: طوّر+اختبر عندي بدقة، وبس لما ينجح تماماً نختبره عنده.
+
+### ✅ (أ) توقيع الـ exe (Authenticode)
+- شهادة code-signing ذاتية التوقيع لـ Al-Abbasi Soft (10 سنوات، CodeSigning EKU). المفتاح الخاص gitignored، الشهادة العامة في git للتوزيع عبر GPO.
+- `agent/build.sh`: cross-compile الـ3 exe → توقيع (osslsigncode) → نشر. يدعم شهادة CA حقيقية (cert.pfx + MOTECH_PFX_PASS + timestamp) تلقائياً.
+- ويندوز يعرض الناشر "Al-Abbasi Soft" بدل "Unknown Publisher". verify=ok عند الثقة بالشهادة. README فيه مستويات الثقة + GPO import + ترقية لـ CA.
+
+### ✅ (ب) تدوير المفاتيح E2E (state machine سليم)
+- استبدلت العلَمين القديمين (كانا يُرسلان rotated_ok للأبد) بـ RotateConfirmPending واحد: apply→confirm→ack→clear. idempotent، ما يعيد توليد المفتاح أثناء انتظار الـack، ولا يؤكّد تدوير جديد قبل أوانه.
+- **مُختبَر live ضد backend حقيقي**: تدوير أول (عند register) + تدوير ثانٍ (من اللوحة) → دورتي confirm→ack نظيفتين، DB: مفتاح قديم active=f، جديد active=t، المفتاح العام تغيّر فعلاً. + TestRotationStateMachine.
+
+### ✅ (ج) صفحة تثبيت ذكية /setup/{token}
+- صفحة عامة self-contained (RTL عربي): اسم الجهاز + زر تحميل + الرمز (مدمج) + خطوات + ملاحظة تحذير ويندوز. تتحقق من الرمز بلا استهلاكه، وتعرض خطأ للرموز المجهولة/المستخدمة/المنتهية.
+- CreateClient يرجّع setup_url. اللوحة: modal الإنشاء يعرض الرابط + زر "فتح صفحة التثبيت".
+- مُختبَر live (screenshot للصفحة + CDP لتدفق اللوحة).
+
+### Commits: 0c90bdb, 239e6a9, df19e3a (+ docs)
+### ⏳ جاهز للاختبار على جهاز المستخدم: الـ3 كلها (exe موقّع منشور، تدوير، صفحة تثبيت)
