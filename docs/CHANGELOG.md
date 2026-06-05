@@ -12,3 +12,4 @@
 - 2026-06-05: **NetBird LIVE** — PAT مدمج (في .env)، الـ backend ينشئ setup keys حقيقية في NetBird Cloud (متحقق E2E). أضيف auto_groups للـ payload.
 - 2026-06-05: **Agent built** — motech-connect.exe (Go, Windows PE32+), register/heartbeat/service, E2E tested vs live backend+NetBird. + docs/AGENT.md.
 - 2026-06-05: **(ج) complete** — heartbeat ingests peer_id+public_key; real SSH key rotation on agent (ed25519 → administrators_authorized_keys); connection endpoint shows peer IP + ssh cmd + pubkey; disable/delete revoke real NetBird peer. E2E verified.
+- 2026-06-05: **Dashboard redesign (فاخر)** — sidebar+logo, stats cards, status bars, activity feed, search+filter, desktop table + mobile cards, dark/light mode, toasts, loading states, crisp SVG icon set (no emoji-font dependency), Tajawal font, brand palette. Responsive Desktop+Mobile.

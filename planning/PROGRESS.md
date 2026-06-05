@@ -56,3 +56,10 @@
 
 ### ⏭️ التالي
 - إكمال Backend Phase 1 ثم تكامل NetBird (Phase 2).
+
+### ✅ Dashboard redesign (M4) — فاخر ومتجاوب
+- Sidebar + شعار SVG، stats cards، توزيع الحالة (bars)، activity feed.
+- صفحة العملاء: جدول desktop احترافي + **cards على الموبايل** بأزرار أيقونية.
+- بحث + فلترة، dark/light mode، toasts، loading states.
+- أيقونات SVG (بلا اعتماد على خط emoji)، خط Tajawal، لوحة ألوان brand.
+- منشور ومتحقق بصرياً على الدومين.
