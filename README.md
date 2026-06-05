@@ -18,6 +18,38 @@
 
 ---
 
+## 🏗️ المعمارية (Architecture)
+
+```mermaid
+flowchart TB
+    Admin([الأدمن / AI Agent]) -->|HTTPS + JWT| Dash[Dashboard<br/>Tailwind + Alpine]
+    Dash --> API[Backend API<br/>Go + chi + sqlx]
+    API --> DB[(PostgreSQL<br/>clients, ssh_keys enc,<br/>tokens, activity_log)]
+    API -->|REST| NB[NetBird Cloud / Self-hosted]
+    API -.->|push public key + commands| Agent[Motech Agent .exe<br/>Windows, signed]
+    Agent -->|heartbeat 20s| API
+    Agent -->|join mesh| NB
+    Admin -.->|SSH over mesh w/ private key| Client[(Client Machine<br/>NetBird peer)]
+    Agent --- Client
+    API -->|AES-256-GCM private key| DB
+
+    classDef sec fill:#0a7,color:#fff;
+    class API,DB sec;
+```
+
+**دورة الحياة**: الأدمن يضيف عميل → الـbackend يولّد keypair (الخاص مشفّر في DB) + token لمرة واحدة → العميل يفتح صفحة التثبيت → الوكيل ينضم لـ NetBird ويثبّت المفتاح العام المدفوع → الأدمن ينسخ معلومات الاتصال ويدخل SSH عبر الشبكة.
+
+## ✨ المميزات (Features)
+
+- 🔑 **Backend-owned SSH keys** — الـbackend يولّد ed25519 keypair، المفتاح الخاص مشفّر AES-256-GCM، يُسلّم للأدمن فقط.
+- 🔄 **تدوير المفاتيح** — دورة confirm/ack، حذف القديم نهائياً.
+- 📦 **وكيل .exe موقّع** (Authenticode) يعمل كخدمة تلقائية.
+- 🌐 **NetBird mesh** قابل للتبديل (Cloud ↔ Self-hosted) بمتغير واحد.
+- 🔗 **صفحة تثبيت برابط واحد** `/setup/{token}` للعملاء.
+- 📋 **نسخ معلومات الاتصال الكاملة** (IP + User + Private Key + أمر SSH جاهز) — مثالي للوكلاء الأذكياء.
+- 📝 **سجل نشاط كامل** لكل عملية (إنشاء/تدوير/وصول للمفتاح/تعطيل).
+- 🌗 **RTL Arabic dashboard** — dark/light، responsive، SVG icons.
+
 ## 🎯 المبادئ المعمارية الأساسية (Core Principles)
 
 1. **Portability first** — كل شيء قابل للنقل:
@@ -70,3 +102,15 @@ go run ./cmd/server
 - [docs/CHANGELOG.md](docs/CHANGELOG.md) — سجل التغييرات
 - [planning/ROADMAP.md](planning/ROADMAP.md) — خارطة الطريق
 - [planning/PROGRESS.md](planning/PROGRESS.md) — تقدّم العمل اليومي
+- [planning/DECISIONS.md](planning/DECISIONS.md) — سجل القرارات المعمارية (ADRs)
+
+---
+
+## 🔒 الأمان (Security)
+
+راجع [SECURITY.md](SECURITY.md) لسياسة الإبلاغ عن الثغرات والضوابط المطبّقة.
+المفاتيح الخاصة مشفّرة AES-256-GCM، HTTPS فقط، ولا secrets في git.
+
+## 📄 الترخيص (License)
+
+Proprietary — ملكية خاصة لـ Al-Abbasi Soft. راجع [LICENSE](LICENSE).

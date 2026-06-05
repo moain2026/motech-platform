@@ -8,7 +8,26 @@ backend/.env
 tmp/
 agent/motech-connect.exe
 
-# Code-signing private key (NEVER commit). Public cert + pfx handled per-policy.
+# Code-signing private keys (NEVER commit). Public certs (ca.crt, leaf, chain) are OK.
 agent/signing/*.key
 agent/signing/cert.pfx
 agent/signing/ca.key
+
+# Secrets / keys (defense in depth)
+*.pem
+*.pfx
+*.p12
+id_motech
+secrets/
+**/private/
+
+# Build artifacts
+/tmp/
+*.log
+dist/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+*.swp
