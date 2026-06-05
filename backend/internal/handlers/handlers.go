@@ -233,6 +233,49 @@ func (h *Handler) GetClient(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, c)
 }
 
+type updateClientReq struct {
+	Name         *string `json:"name"`
+	Branch       *string `json:"branch"`
+	ContactName  *string `json:"contact_name"`
+	ContactPhone *string `json:"contact_phone"`
+}
+
+// UpdateClient edits a client's editable metadata (name/branch/contact). Only
+// provided fields are changed. Status/keys/tokens are NOT touched here.
+func (h *Handler) UpdateClient(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	var req updateClientReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid body")
+		return
+	}
+	if req.Name != nil && strings.TrimSpace(*req.Name) == "" {
+		writeErr(w, http.StatusBadRequest, "name cannot be empty")
+		return
+	}
+	res, err := h.DB.Exec(`
+		UPDATE clients SET
+		  name          = COALESCE($2, name),
+		  branch        = COALESCE($3, branch),
+		  contact_name  = COALESCE($4, contact_name),
+		  contact_phone = COALESCE($5, contact_phone),
+		  updated_at    = now()
+		WHERE id=$1`,
+		id, req.Name, req.Branch, req.ContactName, req.ContactPhone)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		writeErr(w, http.StatusNotFound, "not found")
+		return
+	}
+	h.logActivity(actorOf(r), "client.update", &id, nil)
+	var c models.Client
+	_ = h.DB.Get(&c, `SELECT * FROM clients WHERE id=$1`, id)
+	writeJSON(w, http.StatusOK, c)
+}
+
 // Connection returns the copy-able connection info for AI agents.
 func (h *Handler) Connection(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
@@ -405,15 +448,28 @@ func (h *Handler) DeleteClient(w http.ResponseWriter, r *http.Request) {
 
 // ---- activity ----
 
-// Activity returns recent activity-log entries.
+// Activity returns recent activity-log entries enriched with the affected
+// client's name (so the UI can show "rotated key — <client>" not just the action).
 func (h *Handler) Activity(w http.ResponseWriter, r *http.Request) {
-	var rows []models.ActivityLog
-	if err := h.DB.Select(&rows, `SELECT * FROM activity_log ORDER BY created_at DESC LIMIT 100`); err != nil {
+	type activityRow struct {
+		ID         string    `db:"id" json:"id"`
+		Actor      string    `db:"actor" json:"actor"`
+		ClientID   *string   `db:"client_id" json:"client_id,omitempty"`
+		ClientName *string   `db:"client_name" json:"client_name,omitempty"`
+		Action     string    `db:"action" json:"action"`
+		CreatedAt  time.Time `db:"created_at" json:"created_at"`
+	}
+	var rows []activityRow
+	if err := h.DB.Select(&rows, `
+		SELECT a.id, a.actor, a.client_id, c.name AS client_name, a.action, a.created_at
+		FROM activity_log a
+		LEFT JOIN clients c ON c.id = a.client_id
+		ORDER BY a.created_at DESC LIMIT 200`); err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	if rows == nil {
-		rows = []models.ActivityLog{}
+		rows = []activityRow{}
 	}
 	writeJSON(w, http.StatusOK, rows)
 }

@@ -65,6 +65,7 @@ func main() {
 		g.Get("/api/clients", h.ListClients)
 		g.Post("/api/clients", h.CreateClient)
 		g.Get("/api/clients/{id}", h.GetClient)
+		g.Put("/api/clients/{id}", h.UpdateClient)
 		g.Get("/api/clients/{id}/connection", h.Connection)
 		g.Get("/api/clients/{id}/private-key", h.PrivateKey)
 		g.Post("/api/clients/{id}/rotate-key", h.RotateKey)

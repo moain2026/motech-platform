@@ -19,6 +19,7 @@
     }
   </script>
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <script defer src="https://unpkg.com/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
   <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <style>
     [x-cloak]{display:none!important}
@@ -186,8 +187,9 @@
                     <td class="px-5 py-4">
                       <div class="flex gap-1">
                         <button @click="copyConn(c)" title="نسخ الاتصال" x-html="ic.copy" class="p-2 rounded-lg hover:bg-brand-50 dark:hover:bg-slate-800 text-brand-600 transition"></button>
+                        <button @click="openEdit(c)" title="تعديل" x-html="ic.edit" class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition"></button>
                         <button @click="rotate(c)" title="تدوير المفتاح" x-html="ic.rotate" class="p-2 rounded-lg hover:bg-amber-50 dark:hover:bg-slate-800 text-amber-600 transition"></button>
-                        <button @click="disable(c)" title="تعطيل" x-html="ic.disable" class="p-2 rounded-lg hover:bg-orange-50 dark:hover:bg-slate-800 text-orange-600 transition"></button>
+                        <button x-show="c.status!=='disabled'" @click="disable(c)" title="تعطيل" x-html="ic.disable" class="p-2 rounded-lg hover:bg-orange-50 dark:hover:bg-slate-800 text-orange-600 transition"></button>
                         <button @click="del(c)" title="حذف" x-html="ic.trash" class="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-slate-800 text-red-600 transition"></button>
                       </div>
                     </td>
@@ -210,8 +212,9 @@
                   <span class="px-2.5 py-1 rounded-full text-xs font-medium inline-flex items-center gap-1.5" :class="badge(c.status)"><span class="w-1.5 h-1.5 rounded-full" :class="dot(c.status)"></span><span x-text="statusLabel(c.status)"></span></span>
                 </div>
                 <div class="text-[11px] text-slate-400 mb-3" x-text="c.last_seen?('آخر ظهور: '+fmtTime(c.last_seen)):'لم يتصل بعد'"></div>
-                <div class="grid grid-cols-4 gap-2">
+                <div class="grid grid-cols-5 gap-2">
                   <button @click="copyConn(c)" class="py-2.5 rounded-xl bg-brand-50 dark:bg-slate-800 text-brand-600 grid place-items-center" x-html="ic.copy"></button>
+                  <button @click="openEdit(c)" class="py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 grid place-items-center" x-html="ic.edit"></button>
                   <button @click="rotate(c)" class="py-2.5 rounded-xl bg-amber-50 dark:bg-slate-800 text-amber-600 grid place-items-center" x-html="ic.rotate"></button>
                   <button @click="disable(c)" class="py-2.5 rounded-xl bg-orange-50 dark:bg-slate-800 text-orange-600 grid place-items-center" x-html="ic.disable"></button>
                   <button @click="del(c)" class="py-2.5 rounded-xl bg-red-50 dark:bg-slate-800 text-red-600 grid place-items-center" x-html="ic.trash"></button>
@@ -223,20 +226,44 @@
         </div>
       </template>
 
-      <!-- ===== ACTIVITY ===== -->
+      <!-- ===== ACTIVITY (grouped by day, collapsible, searchable) ===== -->
       <template x-if="page==='activity'">
-        <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 shadow-card border border-slate-100 dark:border-slate-800 fade-enter">
-          <div class="font-bold mb-4">سجل العمليات</div>
-          <div class="space-y-2 text-sm">
-            <template x-for="a in activity" :key="a.id">
-              <div class="flex items-center gap-3 py-2 border-b border-slate-50 dark:border-slate-800/50">
-                <span class="w-2 h-2 rounded-full bg-brand-500 shrink-0"></span>
-                <span class="flex-1" x-text="actionLabel(a.action)"></span>
-                <span class="text-xs text-slate-400" x-text="fmtTime(a.created_at)"></span>
-              </div>
-            </template>
-            <div x-show="activity.length===0" class="text-slate-400 py-8 text-center">لا نشاط بعد</div>
+        <div class="fade-enter space-y-4">
+          <div class="flex flex-wrap items-center gap-2">
+            <div class="font-bold text-lg flex-1">سجل العمليات</div>
+            <input x-model="actSearch" placeholder="بحث..." class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-500 w-40" />
+            <select x-model="actFilter" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm outline-none">
+              <option value="">الكل</option>
+              <option value="client.create">إضافة</option>
+              <option value="client.update">تعديل</option>
+              <option value="client.rotate_key">تدوير</option>
+              <option value="client.private_key_accessed">وصول مفتاح</option>
+              <option value="client.disable">تعطيل</option>
+              <option value="client.delete">حذف</option>
+            </select>
           </div>
+          <template x-for="g in activityGroups" :key="g.day">
+            <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-card border border-slate-100 dark:border-slate-800 overflow-hidden">
+              <button @click="toggleDay(g.day)" class="w-full flex items-center justify-between px-5 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+                <span class="font-bold text-sm" x-text="g.day"></span>
+                <span class="flex items-center gap-2"><span class="text-xs bg-brand-100 dark:bg-brand-700/40 text-brand-700 dark:text-brand-100 px-2 py-0.5 rounded-full" x-text="g.total + ' عملية'"></span><span class="text-slate-400 transition-transform" :class="openDays[g.day]?'rotate-180':''">▾</span></span>
+              </button>
+              <div x-show="openDays[g.day]" x-collapse>
+                <template x-for="a in g.items" :key="a.id">
+                  <div class="flex items-center gap-3 px-5 py-2.5 border-t border-slate-50 dark:border-slate-800/50 text-sm">
+                    <span class="w-7 h-7 rounded-lg grid place-items-center shrink-0" :class="actColor(a.action)" x-html="actIcon(a.action)"></span>
+                    <div class="flex-1 min-w-0">
+                      <div x-text="actionLabel(a.action)"></div>
+                      <div class="text-[11px] text-slate-400 truncate" x-show="a.client_name" x-text="a.client_name"></div>
+                    </div>
+                    <span class="text-xs text-slate-400 shrink-0" x-text="fmtClock(a.created_at)"></span>
+                  </div>
+                </template>
+                <button x-show="g.hasMore" @click="showMore(g.day)" class="w-full py-2.5 text-xs text-brand-500 hover:bg-slate-50 dark:hover:bg-slate-800/40 border-t border-slate-50 dark:border-slate-800/50">عرض المزيد ▾</button>
+              </div>
+            </div>
+          </template>
+          <div x-show="activityGroups.length===0" class="text-slate-400 py-12 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">لا نشاط مطابق</div>
         </div>
       </template>
     </main>
@@ -293,8 +320,24 @@
           <div class="flex items-center justify-between mb-1"><span class="text-xs font-bold text-accent-600">⚡ بلوك جاهز للصق في وكيل AI</span><button @click="copy(conn.ready)" class="text-xs text-accent-600 font-bold">نسخ الكل</button></div>
           <pre class="font-mono text-[10px] leading-tight text-slate-600 dark:text-slate-300 max-h-32 overflow-y-auto whitespace-pre-wrap break-all" x-text="conn.ready"></pre>
         </div>
-        <button @click="copy(conn.ready);toast('تم نسخ البلوك الجاهز','success')" class="w-full bg-accent-600 hover:bg-accent-500 text-white py-3 rounded-xl font-bold transition">📋 نسخ البلوك الجاهز للاتصال</button>
+        <button @click="copy(conn.ready)" class="w-full bg-accent-600 hover:bg-accent-500 text-white py-3 rounded-xl font-bold transition">📋 نسخ البلوك الجاهز للاتصال</button>
         <button @click="conn=null" class="w-full border border-slate-200 dark:border-slate-700 py-2.5 rounded-xl">إغلاق</button>
+      </div>
+    </template>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div x-show="editC" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+  <div class="bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl p-6 w-full sm:max-w-md space-y-4 fade-enter">
+    <div class="flex items-center justify-between"><h2 class="font-bold text-lg">تعديل العميل</h2><button @click="editC=null" class="text-slate-400 text-xl">✕</button></div>
+    <template x-if="editC">
+      <div class="space-y-3">
+        <div><label class="text-xs text-slate-400">اسم العميل *</label><input x-model="editC.name" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-brand-500" /></div>
+        <div><label class="text-xs text-slate-400">الفرع</label><input x-model="editC.branch" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-brand-500" /></div>
+        <div><label class="text-xs text-slate-400">المسؤول</label><input x-model="editC.contact_name" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-brand-500" /></div>
+        <div><label class="text-xs text-slate-400">الهاتف</label><input x-model="editC.contact_phone" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-brand-500" /></div>
+        <button @click="saveEdit()" :disabled="editLoading||!editC.name" class="w-full bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white py-3 rounded-xl font-bold transition">حفظ التعديلات</button>
       </div>
     </template>
   </div>
@@ -321,6 +364,8 @@ function app(){
     page:'overview', sidebar:false,
     clients:[], activity:[], nbMode:'-',
     search:'', filter:'',
+    actSearch:'', actFilter:'', openDays:{},
+    editC:null, editLoading:false,
     showAdd:false, created:null, conn:null, form:{name:'',branch:'',contact_name:'',contact_phone:''},
     installerURL: location.origin + '/download/motech-connect.exe',
     toasts:[],
@@ -336,6 +381,7 @@ function app(){
       rotate:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>',
       disable:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/></svg>',
       trash:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>',
+      edit:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg>',
     },
     get nav(){return[
       {id:'overview',label:'نظرة عامة',icon:this.ic.overview},
@@ -363,9 +409,48 @@ function app(){
     saveDark(){localStorage.setItem('motech_dark',this.dark?'1':'0')},
     async refresh(){await Promise.all([this.load(),this.loadActivity()])},
     async load(){const r=await fetch('/api/clients',{headers:this.hdr()});if(r.ok)this.clients=await r.json()},
-    async loadActivity(){const r=await fetch('/api/activity',{headers:this.hdr()});if(r.ok)this.activity=await r.json()},
+    async loadActivity(){const r=await fetch('/api/activity',{headers:this.hdr()});if(r.ok){this.activity=await r.json();}},
+    dayMore:{},
+    showMore(day){this.dayMore[day]=(this.dayMore[day]||0)+50},
     get total(){return this.clients.length},
     get filtered(){return this.clients.filter(c=>(!this.filter||c.status===this.filter)&&((c.name||'').includes(this.search)||(c.branch||'').includes(this.search)))},
+    get activityGroups(){
+      const q=this.actSearch.trim();
+      const items=this.activity.filter(a=>{
+        if(this.actFilter && a.action!==this.actFilter) return false;
+        if(!q) return true;
+        return (this.actionLabel(a.action)+' '+(a.client_name||'')).includes(q);
+      });
+      const groups={}; const order=[];
+      for(const a of items){
+        const day=this.dayLabel(a.created_at);
+        if(!groups[day]){groups[day]=[];order.push(day);}
+        groups[day].push(a);
+      }
+      return order.map(day=>{
+        const all=groups[day];
+        const cap=8+(this.dayMore[day]||0);
+        return {day, total:all.length, items:all.slice(0,cap), hasMore:all.length>cap};
+      });
+    },
+    dayLabel(ts){
+      const d=new Date(ts), now=new Date();
+      const sameDay=(x,y)=>x.toDateString()===y.toDateString();
+      const yest=new Date(now); yest.setDate(now.getDate()-1);
+      if(sameDay(d,now)) return 'اليوم';
+      if(sameDay(d,yest)) return 'أمس';
+      return d.toLocaleDateString('ar',{year:'numeric',month:'long',day:'numeric'});
+    },
+    toggleDay(day){this.openDays[day]=!this.openDays[day]},
+    fmtClock(ts){return new Date(ts).toLocaleTimeString('ar',{hour:'2-digit',minute:'2-digit'})},
+    actIcon(a){
+      const m={'client.create':this.ic.clients,'client.update':this.ic.edit,'client.rotate_key':this.ic.rotate,'client.private_key_accessed':this.ic.copy,'client.connection_copied':this.ic.copy,'client.disable':this.ic.disable,'client.delete':this.ic.trash,'agent.register':this.ic.clients,'agent.rotated_applied':this.ic.rotate};
+      return m[a]||this.ic.activity;
+    },
+    actColor(a){
+      const m={'client.create':'bg-accent-50 text-accent-600','client.update':'bg-slate-100 text-slate-500','client.rotate_key':'bg-amber-50 text-amber-600','client.private_key_accessed':'bg-brand-50 text-brand-600','client.connection_copied':'bg-brand-50 text-brand-600','client.disable':'bg-orange-50 text-orange-600','client.delete':'bg-red-50 text-red-600'};
+      return (m[a]||'bg-slate-100 text-slate-500')+' dark:bg-slate-800';
+    },
     countBy(s){return this.clients.filter(c=>c.status===s).length},
     get stats(){return[
       {label:'إجمالي العملاء',value:this.total,icon:this.ic.total,color:'text-brand-600'},
@@ -404,7 +489,26 @@ function app(){
     async rotate(c){await fetch('/api/clients/'+c.id+'/rotate-key',{method:'POST',headers:this.hdr()});this.toast('تم طلب تدوير المفتاح','info');this.refresh()},
     async disable(c){if(!confirm('تعطيل '+c.name+'؟'))return;await fetch('/api/clients/'+c.id+'/disable',{method:'POST',headers:this.hdr()});this.toast('تم التعطيل','info');this.refresh()},
     async del(c){if(!confirm('حذف '+c.name+' نهائياً؟'))return;await fetch('/api/clients/'+c.id,{method:'DELETE',headers:this.hdr()});this.toast('تم الحذف','info');this.refresh()},
-    copy(t){navigator.clipboard?.writeText(t)},
+    openEdit(c){this.editC={id:c.id,name:c.name,branch:c.branch||'',contact_name:c.contact_name||'',contact_phone:c.contact_phone||''}},
+    async saveEdit(){
+      if(!this.editC||!this.editC.name)return; this.editLoading=true;
+      try{
+        const r=await fetch('/api/clients/'+this.editC.id,{method:'PUT',headers:this.hdr(),body:JSON.stringify({name:this.editC.name,branch:this.editC.branch,contact_name:this.editC.contact_name,contact_phone:this.editC.contact_phone})});
+        if(r.ok){this.editC=null;await this.refresh();this.toast('تم حفظ التعديلات','success');}
+        else this.toast('فشل الحفظ','error');
+      }catch(e){this.toast('خطأ في الاتصال','error')}finally{this.editLoading=false}
+    },
+    async copy(t){
+      if(!t){return}
+      try{
+        if(navigator.clipboard && window.isSecureContext){ await navigator.clipboard.writeText(t); }
+        else { // fallback for non-HTTPS / old browsers
+          const ta=document.createElement('textarea'); ta.value=t; ta.style.position='fixed'; ta.style.opacity='0';
+          document.body.appendChild(ta); ta.focus(); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+        }
+        this.toast('تم النسخ','success');
+      }catch(e){ this.toast('تعذّر النسخ — انسخ يدوياً','error'); }
+    },
     toast(msg,type='info'){const id=Date.now()+Math.random();this.toasts.push({id,msg,type});setTimeout(()=>this.toasts=this.toasts.filter(x=>x.id!==id),3000)},
   }
 }
