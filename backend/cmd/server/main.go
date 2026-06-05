@@ -50,6 +50,8 @@ func main() {
 	r.Get("/health", h.Health)
 	r.Post("/api/auth/login", h.Login)
 	r.Post("/api/agent/register", h.AgentRegister)
+	// public install page (one-time token in URL is the only secret)
+	r.Get("/setup/{token}", h.SetupPage)
 
 	// agent-authenticated
 	r.Group(func(g chi.Router) {

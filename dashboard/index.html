@@ -262,9 +262,11 @@
           <div class="font-bold text-accent-600">✓ تم إنشاء العميل</div>
           <div>رمز التفعيل <span class="text-xs text-slate-400">(مرة واحدة)</span>:</div>
           <div class="flex items-center gap-2"><code class="flex-1 font-mono bg-white dark:bg-slate-800 px-3 py-2 rounded-lg text-brand-700 dark:text-brand-100 text-center tracking-wider" x-text="created.setup_token"></code><button @click="copy(created.setup_token)" class="p-2 bg-brand-600 text-white rounded-lg">📋</button></div>
-          <div class="text-xs text-slate-400">أرسل للعميل رابط التحميل + هذا الرمز. يفتح التطبيق → يلصق الرمز → يضغط تفعيل.</div>
+          <div class="text-xs text-slate-400">✨ أسهل طريقة: أرسل <b>رابط التثبيت</b> للعميل — يفتحه ويتبع الخطوات (الرمز مدمج).</div>
+          <div class="flex items-center gap-2"><code class="flex-1 font-mono bg-white dark:bg-slate-800 px-3 py-2 rounded-lg text-accent-600 dark:text-accent-300 text-xs truncate" x-text="setupURL()"></code><button @click="copy(setupURL())" class="p-2 bg-accent-600 text-white rounded-lg">🔗</button></div>
+          <a :href="setupURL()" target="_blank" class="flex items-center justify-center gap-2 w-full bg-accent-600 hover:bg-accent-500 text-white py-2.5 rounded-lg font-bold transition">🔗 فتح صفحة التثبيت</a>
+          <div class="text-[11px] text-slate-400 text-center">— أو تحميل مباشر —</div>
           <a :href="installerURL" class="flex items-center justify-center gap-2 w-full bg-brand-600 hover:bg-brand-700 text-white py-2.5 rounded-lg font-bold transition" download>⬇ تحميل التطبيق (.exe)</a>
-          <button @click="copy(installerURL)" class="w-full text-xs text-brand-500 hover:underline">نسخ رابط التحميل</button>
         </div>
         <button @click="showAdd=false;created=null" class="w-full border border-slate-200 dark:border-slate-700 py-3 rounded-xl font-bold">تم</button>
       </div>
@@ -391,6 +393,7 @@ function app(){
         else this.toast('فشل الإنشاء','error');
       }finally{this.loading=false}
     },
+    setupURL(){return this.created&&this.created.setup_url?(location.origin+this.created.setup_url):''},
     async copyConn(c){
       try{
         const r=await fetch('/api/clients/'+c.id+'/connection',{headers:this.hdr()});

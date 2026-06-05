@@ -194,10 +194,11 @@ func (h *Handler) CreateClient(w http.ResponseWriter, r *http.Request) {
 		"id":             clientID,
 		"name":           req.Name,
 		"setup_token":    plain, // shown ONCE
+		"setup_url":      "/setup/" + plain, // shareable one-link install page
 		"netbird_setup":  sk.Key,
 		"netbird_mode":   map[bool]string{true: "mock", false: "live"}[h.NB.IsMock()],
 		"installer":      "motech-connect.exe",
-		"note":           "أعطِ العميل الملف + رمز التفعيل. الرمز يظهر مرة واحدة فقط.",
+		"note":           "أعطِ العميل رابط التثبيت (setup_url) — يفتحه ويتبع الخطوات. الرابط يعمل مرة واحدة.",
 	})
 }
 
