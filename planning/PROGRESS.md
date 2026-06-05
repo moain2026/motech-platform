@@ -68,3 +68,27 @@
 - ثبّت netbird CLI على الـ VM، شغّل الـ agent الحقيقي ضد الـ backend الحقيقي.
 - النتيجة: register ✓، **netbird up: Connected** (peer حقيقي 100.95.255.69) ✓، heartbeat يبلّغ peer+key ✓، اللوحة تعرض IP حقيقي ✓، **التعطيل حذف الـ peer فعلياً من NetBird** ✓.
 - إصلاحات: المفتاح الكامل UUID (migration 002)، IP نظيف بلا /16، DeletePeer يحلّ IP→peer-id.
+
+## 2026-06-05 (Session 2)
+
+### ✅ تم
+- استئناف من الذاكرة بالضبط (memory/2026-06-05.md). لا فقدان تقدّم.
+- **حفظ الإصلاح الجوهري في git** (كان غير محفوظ): بقاء الـ agent حياً تحت Windows SYSTEM/Session 0
+  — logging لملف فقط (`C:\ProgramData\Motech\agent.log`) + recover() لأمر `run`، وإيقاف أي مهمة/عملية قديمة قبل النسخ للمسار الثابت. (commit `2c7ab14`)
+- تحقق: `go build` + cross-compile لـ Windows .exe نظيفان.
+- Backend حيّ (systemd, :8080) واللوحة حيّة (200) على https://qfetmfdn.gensparkclaw.com.
+
+### 🔎 تشخيص القضية المفتوحة (هل عملية SYSTEM المجدوَلة تستمر؟)
+- نفق Cloudflare من الجلسة السابقة كان لا يزال شغّالاً للحظة (نجح اتصالان SSH: أنا `motech\moain`، ساعة الجهاز 12:10).
+- لكن **استعلام عمليات motech-connect رجع فارغاً** → لا توجد عملية agent حيّة الآن ⇒ `last_seen` عالق عند 12:04:29.
+- ثم سقط النفق: `websocket: bad handshake` على `ruby-owner-tend-ads.trycloudflare.com`
+  ⇒ نفق المستخدم على جهاز MoTech (cloudflared tunnel --url tcp://localhost:22) **توقّف**.
+
+### ⛔ البلوكر الحالي (يحتاج المستخدم)
+- لإكمال التحقق طويل الأمد لازم نفق حيّ. المطلوب من المستخدم: إعادة تشغيل على جهاز MoTech:
+  `cloudflared tunnel --url tcp://localhost:22` ثم يعطيني الـ URL الجديد.
+
+### ⏭️ عند عودة النفق (خطة التحقق الدقيقة)
+1. تنظيف: قتل كل عمليات motech القديمة + حذف العملاء التجريبيين (إبقاء عميل واحد نظيف).
+2. تثبيت نظيف واحد عبر motech-setup.exe بـ exe الجديد (commit 2c7ab14).
+3. تأكيد: schtasks Last Result=0، الـ PID يبقى حياً 2+ دقيقة، agent.log يُظهر loop مستمر، last_seen يتقدّم تلقائياً تحت SYSTEM.
