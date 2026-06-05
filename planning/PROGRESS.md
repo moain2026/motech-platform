@@ -186,3 +186,9 @@
 - السبب مؤكد: Tailwind CDN ما يحمّل كلاساته على شبكته → `items-center` ما تُطبّق → modal بمحاذاة سفلية/غير مرئي.
 - **تحقق قاطع**: حاكيت حجب cdn.tailwindcss.com تمامًا عبر CDP ثم فتحت الـ modal → بفضل `.mt-modal` صار align/justify=center والنافذة متوسّطة عموديًا (مو بالأسفل). الإصلاح يعمل بدون الـ CDN إطلاقًا.
 - تبقّى تنبيه المستخدم: (1) يفتح https://qfetmfdn.gensparkclaw.com مو IP غير الآمن، (2) hard-refresh لجلب index.html الجديد.
+
+### اختبار SSH على جهاز مهند (Session 3, ~17:25)
+- مهند peer متصل فعلًا في NetBird: IP 100.95.237.55 ("طرفي-غليل"، connected=True). ping من VM ناجح (229ms).
+- عملاء آخرون (احمد مناجي، علي علي، 134ae688) **online في اللوحة لكن peer_id فاضي + غير موجودين في NetBird peers** → الوكيل يبلّغ heartbeat بس ما انضم لـ NetBird فعليًا ⇒ اللوحة تعرض <netbird-ip-pending>. (نمط معروف من الذاكرة: peer_id يجي فاضي من parse الوكيل.)
+- SSH للـمهند: التفاوض الكامل ينجح (KEX+NEWKEYS+service_accept ssh-userauth، خادم OpenSSH_for_Windows_9.5) ثم **Connection reset port 22 قبل بدء publickey auth**.
+  - نمط كلاسيكي لـ OpenSSH-Windows مع administrators_authorized_keys: صلاحيات/ملكية الملف خاطئة (لازم يملكه Administrators+SYSTEM فقط، بلا وراثة) → sshd يقطع فورًا. أو sshd يكرش عند قراءته. المشكلة على جهاز مهند، مو كودنا/الشبكة.
