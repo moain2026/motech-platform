@@ -180,3 +180,9 @@
   - السبب: اللوحة تعتمد `cdn.tailwindcss.com` (يولّد CSS وقت التشغيل). على شبكة/جهاز المستخدم الـ CDN بطيء أو محجوب → كلاسات الـ modal ما تُولَّد → الحالة تتغير (showAdd=true) لكن الـ modal بلا position/size = غير مرئي. del/disable يشتغلان لأنهما لا يحتاجان CSS إطلاقًا. = "الأزرار ميتة" عند المستخدم بينما تشتغل على VM.
 - **الإصلاح**: أضفت CSS صريح `.mt-modal` (position:fixed;inset:0;z-index:50;display:flex;background rgba) داخل `<style>` المحلي + علّمت الـ3 modals بالكلاس. الآن تُعرض بغض النظر عن Tailwind CDN. تحقق عبر CDP بعد reload: modal display:flex, fixed, 937x947, visible ✓. (سابقًا أضفت no-cache headers — مفيد لجلب النسخة الجديدة.)
 - ملف اللوحة ثابت (FileServer) — التغيير حيّ فورًا، بدون build.
+
+### تأكيد نهائي (Session 3) — صورة المستخدم أثبتت التشخيص
+- صورة المستخدم: شريط العنوان `20.240.130.155:8080` + "غير آمن" (يفتح عبر IP/HTTP، مو https://qfetmfdn) + الـ modal يظهر بالأسفل.
+- السبب مؤكد: Tailwind CDN ما يحمّل كلاساته على شبكته → `items-center` ما تُطبّق → modal بمحاذاة سفلية/غير مرئي.
+- **تحقق قاطع**: حاكيت حجب cdn.tailwindcss.com تمامًا عبر CDP ثم فتحت الـ modal → بفضل `.mt-modal` صار align/justify=center والنافذة متوسّطة عموديًا (مو بالأسفل). الإصلاح يعمل بدون الـ CDN إطلاقًا.
+- تبقّى تنبيه المستخدم: (1) يفتح https://qfetmfdn.gensparkclaw.com مو IP غير الآمن، (2) hard-refresh لجلب index.html الجديد.
