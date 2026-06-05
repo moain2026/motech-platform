@@ -10,3 +10,4 @@
 - 2026-06-05: Dashboard أولي (Tailwind+Alpine, RTL, Al-Abbasi Soft).
 - 2026-06-05: توثيق كامل: API, ARCHITECTURE, DATABASE, SECURITY, NETBIRD, SETUP, DEPLOYMENT (+ Mermaid diagrams).
 - 2026-06-05: **NetBird LIVE** — PAT مدمج (في .env)، الـ backend ينشئ setup keys حقيقية في NetBird Cloud (متحقق E2E). أضيف auto_groups للـ payload.
+- 2026-06-05: **Agent built** — motech-connect.exe (Go, Windows PE32+), register/heartbeat/service, E2E tested vs live backend+NetBird. + docs/AGENT.md.

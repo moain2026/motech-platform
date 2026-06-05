@@ -6,3 +6,4 @@ backend/.env
 /backend/bin/
 *.exe
 tmp/
+agent/motech-connect.exe

@@ -35,7 +35,19 @@
 
 ### 🚧 التالي
 - ربط DeletePeer بالـ peer_id الحقيقي بعد انضمام العميل (إكمال Phase 2).
-- بناء الـ Agent (.exe) الفعلي (Phase 3).
+- بناء الـ Agent (.exe) الفعلي (Phase 3). ✅ (انظر أدناه)
+### ✅ Agent (.exe) — Phase 3 (جوهر) — مبني ومُختبَر
+- Go module في `agent/`، أوامر: register / run / install / uninstall.
+- يسجّل بالرمز → يستلم agent JWT + netbird key + يحفظها في ProgramData\Motech\agent.json.
+- ينضم لـ NetBird (`netbird up`) + يسجّل خدمة ويندوز (kardianos/service).
+- heartbeat كل 20s يطبّق أوامر disable/rotate.
+- **`motech-connect.exe` (PE32+ x86-64, 5.7MB) مبني بنجاح** عبر cross-compile.
+- اختبار E2E ضد backend حقيقي + NetBird live: register ✓، online ✓، disable→heartbeat reports disabled ✓.
+
+### 🚧 التالي
+- Phase 3.1: تنفيذ تدوير المفتاح فعلياً + GUI صغيرة + توقيع exe.
+- إكمال Phase 2: ربط peer_id الحقيقي للقطع عبر DeletePeer.
+
 
 ### 📌 قرارات اليوم
 - sqlx بدل GORM (شفافية SQL). [ADR-002]
