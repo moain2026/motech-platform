@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 )
 
@@ -137,6 +138,10 @@ func netbirdPeerIP() string {
 		NetbirdIP string `json:"netbirdIp"`
 	}
 	if json.Unmarshal(out, &st) == nil {
+		// strip CIDR suffix (e.g. 100.95.255.69/16 -> 100.95.255.69)
+		if i := strings.IndexByte(st.NetbirdIP, '/'); i > 0 {
+			return st.NetbirdIP[:i]
+		}
 		return st.NetbirdIP
 	}
 	return ""

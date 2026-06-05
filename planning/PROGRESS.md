@@ -63,3 +63,8 @@
 - بحث + فلترة، dark/light mode، toasts، loading states.
 - أيقونات SVG (بلا اعتماد على خط emoji)، خط Tajawal، لوحة ألوان brand.
 - منشور ومتحقق بصرياً على الدومين.
+
+### ✅ اختبار حقيقي كامل (Self E2E test on VM)
+- ثبّت netbird CLI على الـ VM، شغّل الـ agent الحقيقي ضد الـ backend الحقيقي.
+- النتيجة: register ✓، **netbird up: Connected** (peer حقيقي 100.95.255.69) ✓، heartbeat يبلّغ peer+key ✓، اللوحة تعرض IP حقيقي ✓، **التعطيل حذف الـ peer فعلياً من NetBird** ✓.
+- إصلاحات: المفتاح الكامل UUID (migration 002)، IP نظيف بلا /16، DeletePeer يحلّ IP→peer-id.

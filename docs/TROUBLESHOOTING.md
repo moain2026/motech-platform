@@ -33,3 +33,14 @@
 - **الأسباب المحتملة:** رفض UAC (يحتاج admin)، أو فشل walk runtime على بعض إصدارات ويندوز.
 - **الحل (موثوق):** استخدم النسخة البديلة **motech-setup.exe** (نافذة console تفاعلية، تسأل الرمز نصياً وتثبّت كل شي). دائماً تعمل.
 - **رابط:** https://qfetmfdn.gensparkclaw.com/download/motech-setup.exe
+
+## NB-001: "invalid setup-key ... invalid UUID length: 20" عند netbird up
+- **المشكلة:** الـ Agent يفشل في الانضمام لـ NetBird بهذا الخطأ.
+- **السبب:** الـ backend كان يرسل للـ Agent معرّف المفتاح المختصر (id, 20 char) بدل المفتاح الكامل (key, 36-char UUID).
+- **الحل:** خزّن `setup_key_full` (المفتاح الكامل) في netbird_links وأرسله في /agent/register. (migration 002).
+- **تم التحقق:** اختبار حقيقي على VM → netbird up: Connected، ظهر peer بـ IP حقيقي.
+
+## NB-002: التعطيل لا يحذف الـ peer (peer_id = IP)
+- **المشكلة:** DeletePeer يحتاج معرّف الـ peer الكائني، لكن الـ Agent يبلّغ الـ IP.
+- **الحل:** الـ backend يحلّ IP→peer-id عبر GET /api/peers قبل الحذف. (DeletePeer يقبل IP أو id).
+- **تم التحقق:** تعطيل عميل → peer انحذف فعلياً من NetBird ✅.

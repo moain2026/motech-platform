@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -67,11 +68,38 @@ func (c *Client) CreateSetupKey(name string) (*SetupKey, error) {
 }
 
 // DeletePeer removes a peer (revokes its access). No-op in mock mode.
-func (c *Client) DeletePeer(peerID string) error {
-	if c.mock || peerID == "" {
+// The argument may be a NetBird peer object id OR a NetBird IP; if it looks
+// like an IP, it is resolved to the peer id first.
+func (c *Client) DeletePeer(peerIDOrIP string) error {
+	if c.mock || peerIDOrIP == "" {
 		return nil
 	}
-	return c.do(http.MethodDelete, "/api/peers/"+peerID, nil, nil)
+	id := peerIDOrIP
+	if strings.Count(peerIDOrIP, ".") == 3 { // looks like an IPv4 address
+		if resolved, err := c.peerIDByIP(peerIDOrIP); err == nil && resolved != "" {
+			id = resolved
+		} else {
+			return fmt.Errorf("peer not found for ip %s", peerIDOrIP)
+		}
+	}
+	return c.do(http.MethodDelete, "/api/peers/"+id, nil, nil)
+}
+
+// peerIDByIP finds a NetBird peer object id by its mesh IP.
+func (c *Client) peerIDByIP(ip string) (string, error) {
+	var peers []struct {
+		ID string `json:"id"`
+		IP string `json:"ip"`
+	}
+	if err := c.do(http.MethodGet, "/api/peers", nil, &peers); err != nil {
+		return "", err
+	}
+	for _, p := range peers {
+		if p.IP == ip {
+			return p.ID, nil
+		}
+	}
+	return "", nil
 }
 
 func (c *Client) do(method, path string, body any, out any) error {
