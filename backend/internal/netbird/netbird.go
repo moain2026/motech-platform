@@ -85,6 +85,17 @@ func (c *Client) DeletePeer(peerIDOrIP string) error {
 	return c.do(http.MethodDelete, "/api/peers/"+id, nil, nil)
 }
 
+// DeleteSetupKey revokes/deletes a setup key by its NetBird key id. No-op in
+// mock mode or when the id is empty (or a mock id). NetBird keeps used one-off
+// keys listed until deleted, so we remove ours when a client is deleted to keep
+// the NetBird setup-keys page clean.
+func (c *Client) DeleteSetupKey(keyID string) error {
+	if c.mock || keyID == "" || strings.HasPrefix(keyID, "mock-") {
+		return nil
+	}
+	return c.do(http.MethodDelete, "/api/setup-keys/"+keyID, nil, nil)
+}
+
 // peerIDByIP finds a NetBird peer object id by its mesh IP.
 func (c *Client) peerIDByIP(ip string) (string, error) {
 	var peers []struct {

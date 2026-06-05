@@ -387,8 +387,13 @@ func (h *Handler) DeleteClient(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	var nb models.NetbirdLink
 	_ = h.DB.Get(&nb, `SELECT * FROM netbird_links WHERE client_id=$1`, id)
+	// Revoke the peer (kills access) AND delete the setup key (keeps the NetBird
+	// setup-keys list clean — one-off keys linger there otherwise).
 	if nb.PeerID != nil {
 		_ = h.NB.DeletePeer(*nb.PeerID)
+	}
+	if nb.SetupKeyRef != nil {
+		_ = h.NB.DeleteSetupKey(*nb.SetupKeyRef)
 	}
 	if _, err := h.DB.Exec(`DELETE FROM clients WHERE id=$1`, id); err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
