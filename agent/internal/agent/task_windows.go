@@ -6,35 +6,109 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 )
 
 const taskName = "MotechConnectAgent"
 
-// installScheduledTask registers a Scheduled Task to run the agent at startup.
-// Now that the agent no longer writes to os.Stdout (which crashed it under
-// Session 0), running as SYSTEM ONSTART is viable. We add a 1-min delay so the
-// NetBird daemon socket is ready first (avoids the boot race).
+// taskXMLTemplate is a Task Scheduler definition that is far more resilient than
+// the bare `schtasks` flags. It adds (per ops review):
+//   - BootTrigger with a 1-min delay so the NetBird daemon socket is ready first
+//   - RestartOnFailure: every 1 minute, up to 3 times
+//   - StartWhenAvailable: catch up if the machine was off / trigger missed
+//   - ExecutionTimeLimit PT0S: no time limit (long-running heartbeat loop)
+//   - Runs as SYSTEM, HighestAvailable, hidden, allowed on battery
+//
+// %EXE% is replaced with the absolute stable exe path.
+const taskXMLTemplate = `<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.3" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <RegistrationInfo>
+    <Description>Secure remote access agent (Motech / Al-Abbasi Soft).</Description>
+    <URI>\MotechConnectAgent</URI>
+  </RegistrationInfo>
+  <Triggers>
+    <BootTrigger>
+      <Enabled>true</Enabled>
+      <Delay>PT1M</Delay>
+    </BootTrigger>
+  </Triggers>
+  <Principals>
+    <Principal id="Author">
+      <UserId>S-1-5-18</UserId>
+      <RunLevel>HighestAvailable</RunLevel>
+    </Principal>
+  </Principals>
+  <Settings>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <AllowHardTerminate>true</AllowHardTerminate>
+    <StartWhenAvailable>true</StartWhenAvailable>
+    <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>
+    <Hidden>true</Hidden>
+    <RunOnlyIfIdle>false</RunOnlyIfIdle>
+    <WakeToRun>false</WakeToRun>
+    <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>
+    <Priority>5</Priority>
+    <RestartOnFailure>
+      <Interval>PT1M</Interval>
+      <Count>3</Count>
+    </RestartOnFailure>
+    <IdleSettings>
+      <StopOnIdleEnd>false</StopOnIdleEnd>
+      <RestartOnIdle>false</RestartOnIdle>
+    </IdleSettings>
+  </Settings>
+  <Actions Context="Author">
+    <Exec>
+      <Command>%EXE%</Command>
+      <Arguments>run</Arguments>
+    </Exec>
+  </Actions>
+</Task>`
+
+// installScheduledTask registers a Scheduled Task (via XML) to run the agent at
+// boot under SYSTEM. The XML approach lets us set RestartOnFailure,
+// StartWhenAvailable and ExecutionTimeLimit which the bare flags cannot express.
 func installScheduledTask(exePath string) error {
 	if exePath == "" {
 		return fmt.Errorf("empty exe path")
 	}
 	_ = exec.Command("schtasks", "/Delete", "/TN", taskName, "/F").Run()
-	args := []string{
-		"/Create", "/TN", taskName,
-		"/TR", fmt.Sprintf(`"%s" run`, exePath),
-		"/SC", "ONSTART",
-		"/DELAY", "0001:00", // 1 minute after boot
-		"/RU", "SYSTEM",
-		"/RL", "HIGHEST",
-		"/F",
+
+	xml := strings.ReplaceAll(taskXMLTemplate, "%EXE%", exePath)
+
+	// Write the XML as UTF-16LE with BOM (Task Scheduler expects this for /XML).
+	tmp := filepath.Join(os.TempDir(), "motech-task.xml")
+	if err := os.WriteFile(tmp, encodeUTF16LEWithBOM(xml), 0o644); err != nil {
+		return fmt.Errorf("write task xml: %w", err)
 	}
-	if out, err := exec.Command("schtasks", args...).CombinedOutput(); err != nil {
-		return fmt.Errorf("schtasks create: %w (%s)", err, strings.TrimSpace(string(out)))
+	defer os.Remove(tmp)
+
+	if out, err := exec.Command("schtasks", "/Create", "/TN", taskName,
+		"/XML", tmp, "/F").CombinedOutput(); err != nil {
+		return fmt.Errorf("schtasks create /XML: %w (%s)", err, strings.TrimSpace(string(out)))
 	}
+	// Kick it off immediately so we don't wait for the next boot.
 	_ = exec.Command("schtasks", "/Run", "/TN", taskName).Run()
 	return nil
+}
+
+// encodeUTF16LEWithBOM converts a UTF-8 string to UTF-16LE bytes with a leading
+// BOM, which is the encoding schtasks /XML expects.
+func encodeUTF16LEWithBOM(s string) []byte {
+	runes := []rune(s)
+	buf := make([]byte, 0, len(runes)*2+2)
+	buf = append(buf, 0xFF, 0xFE) // UTF-16LE BOM
+	for _, r := range runes {
+		if r > 0xFFFF {
+			r = 0xFFFD // replace astral chars (none expected in our template)
+		}
+		buf = append(buf, byte(r), byte(r>>8))
+	}
+	return buf
 }
 
 func uninstallScheduledTask() error {

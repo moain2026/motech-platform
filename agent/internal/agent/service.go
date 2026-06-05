@@ -98,7 +98,19 @@ func (a *Agent) newServiceAt(exePath string) (service.Service, error) {
 // RunService runs the agent's heartbeat loop directly and blocks forever.
 // Used by the Scheduled Task (and foreground). We intentionally do NOT use the
 // kardianos SCM runner here because the agent runs under Task Scheduler.
+//
+// A machine-wide single-instance mutex (Global\MotechConnectAgent) guards
+// against duplicate run loops (e.g. a leftover user process + the SYSTEM task
+// firing together), which previously caused double heartbeats.
 func (a *Agent) RunService() error {
+	release, ok := acquireSingleInstance()
+	if !ok {
+		log.Printf("another motech-connect run loop is already active; exiting this duplicate")
+		return nil
+	}
+	defer release()
+
+	log.Printf("run loop start (single instance acquired)")
 	stop := make(chan struct{})
 	a.loop(stop) // blocks forever
 	return nil
