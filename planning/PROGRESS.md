@@ -153,7 +153,7 @@
 - E2E نجح على جهازه: SSH من Azure→MoTech بمفتاح Dashboard (motech\administrator @ MoTech) ✓، تدوير من Dashboard→المفتاح القديم رُفض، الجديد اشتغل ✓، عميل واحد + مفتاح واحد + log نظيف (0 errors).
 
 ## 2026-06-05 (Session 2 — نشر على GitHub)
-- repo خاص: github.com/MoTechSys/motech-platform (التوكن المخزّن لـ MoTechSys مو moain2026 — صحّحت الـremote).
+- repo خاص نهائي: github.com/moain2026/motech-platform (origin). كان منشور مؤقتاً على MoTechSys ثم نُقل لحساب moain2026 بتوكنه. توكن moain2026 مكشوف بالشات — يُفضّل إلغاؤه.
 - أمان: فحص history كامل — لا PAT/passwords/private keys/tokens. .gitignore صلّب (*.env, *.key, ca.key, *.pem, *.pfx, *.exe, logs, .vscode/.idea). المفاتيح العامة فقط (ca.crt/leaf) في git.
 - أضفت: LICENSE (proprietary — Al-Abbasi Soft)، root SECURITY.md، README + Mermaid architecture + Features.
 - أزلت ملف bogus متعقّب "C:\ProgramData\..\agent.log" (artifact من اختبار linux).
