@@ -158,3 +158,11 @@
 - أضفت: LICENSE (proprietary — Al-Abbasi Soft)، root SECURITY.md، README + Mermaid architecture + Features.
 - أزلت ملف bogus متعقّب "C:\ProgramData\..\agent.log" (artifact من اختبار linux).
 - push: main + tag v1.0.0 + GitHub Release "v1.0.0 — MVP Complete". 36 commits، 63 files، private.
+
+## 2026-06-05 (Session 3 — استئناف + إصلاح قفل الدخول)
+- استأنفت من الذاكرة. تحقق حيّ: backend (db:ok, netbird live), dashboard 200, git نظيف على main، v1.0.0 منشور.
+- **شكوى المستخدم "مافي ردة فعل بالأزرار"**: السبب الجذري = قفل دخول، مو bug بالواجهة.
+  - فحصت اللوحة عبر CDP: Alpine 3.15.12 شغّال، صفر أخطاء JS، الأزرار كلها تشتغل (clients/add/إلخ مختبرة برمجياً). backend يرد 200 على كل شيء.
+  - المستخدم حاول تغيير الإيميل/كلمة المرور من Settings لـ moain2026@gmail.com لكن **التغيير ما حُفظ** (DB ظل admin@motech.local). الأرجح: أدخل "كلمة المرور الحالية" خطأ → backend رفض (401 "كلمة المرور الحالية غير صحيحة") والـ toast ما انتبه له. ثم حاول يدخل بإيميل غير محفوظ → 401 → "مافي ردة فعل".
+  - **الإصلاح**: ضبطت admin مباشرة في DB: email=moain2026@gmail.com، password=moain2026@gmail.com (bcrypt cost10 عبر bcrypt الخاص بالمشروع). تحقق: login بالجديد → 200 ✓، بالقديم → 401 ✓.
+  - كود UpdateMe + saveProfile سليم (يطلب current_password ويعرض الخطأ كـ toast). لا تغيير كود مطلوب.
