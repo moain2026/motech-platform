@@ -136,6 +136,19 @@ func netbirdPeerIP() string {
 	return ""
 }
 
+// SetupAccess generates the initial SSH keypair and installs the public key
+// into the OS authorized-keys file (idempotent; safe to call on first install).
+func (a *Agent) SetupAccess() error {
+	if a.state == nil {
+		return fmt.Errorf("not registered")
+	}
+	if err := a.applyKeyRotation(); err != nil {
+		return err
+	}
+	_ = a.state.save()
+	return nil
+}
+
 // Heartbeat sends one heartbeat (reporting peer_id + public key) and returns
 // the pending-commands response.
 func (a *Agent) Heartbeat() (map[string]any, error) {

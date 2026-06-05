@@ -77,8 +77,9 @@
         </button>
       </template>
     </nav>
-    <div class="p-3 border-t border-white/10 text-xs text-white/50">
-      <div class="flex items-center gap-2 mb-2">
+    <div class="p-3 border-t border-white/10 text-xs text-white/50 space-y-2">
+      <a :href="installerURL" download class="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition">⬇ تحميل تطبيق العميل</a>
+      <div class="flex items-center gap-2">
         <span class="w-2 h-2 rounded-full" :class="nbMode==='live'?'bg-accent-400':'bg-amber-400'"></span>
         <span>NetBird: <span x-text="nbMode" class="font-mono"></span></span>
       </div>
@@ -261,7 +262,9 @@
           <div class="font-bold text-accent-600">✓ تم إنشاء العميل</div>
           <div>رمز التفعيل <span class="text-xs text-slate-400">(مرة واحدة)</span>:</div>
           <div class="flex items-center gap-2"><code class="flex-1 font-mono bg-white dark:bg-slate-800 px-3 py-2 rounded-lg text-brand-700 dark:text-brand-100 text-center tracking-wider" x-text="created.setup_token"></code><button @click="copy(created.setup_token)" class="p-2 bg-brand-600 text-white rounded-lg">📋</button></div>
-          <div class="text-xs text-slate-400">أرسل للعميل: <b>motech-connect.exe</b> + هذا الرمز.</div>
+          <div class="text-xs text-slate-400">أرسل للعميل رابط التحميل + هذا الرمز. يفتح التطبيق → يلصق الرمز → يضغط تفعيل.</div>
+          <a :href="installerURL" class="flex items-center justify-center gap-2 w-full bg-brand-600 hover:bg-brand-700 text-white py-2.5 rounded-lg font-bold transition" download>⬇ تحميل التطبيق (.exe)</a>
+          <button @click="copy(installerURL)" class="w-full text-xs text-brand-500 hover:underline">نسخ رابط التحميل</button>
         </div>
         <button @click="showAdd=false;created=null" class="w-full border border-slate-200 dark:border-slate-700 py-3 rounded-xl font-bold">تم</button>
       </div>
@@ -291,6 +294,7 @@ function app(){
     clients:[], activity:[], nbMode:'-',
     search:'', filter:'',
     showAdd:false, created:null, form:{name:'',branch:'',contact_name:'',contact_phone:''},
+    installerURL: location.origin + '/download/motech-connect.exe',
     toasts:[],
     ic:{
       overview:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>',
