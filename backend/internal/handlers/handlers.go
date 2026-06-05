@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -236,14 +237,42 @@ func (h *Handler) Connection(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	h.logActivity(actorOf(r), "client.connection_copied", &id, nil)
+
+	// The agent installs its public key into administrators_authorized_keys, so
+	// SSH as Administrator is the reliable path on Windows OpenSSH.
+	user := "Administrator"
+	keyFile := "motech_" + shortID(id) + ".key"
+
+	// A single copy-paste block an AI agent can run as-is: write the private key
+	// to a 0600 file, then ssh in over the NetBird mesh.
+	ready := strings.Join([]string{
+		"# 1) save the private key",
+		"cat > " + keyFile + " <<'MOTECH_KEY'",
+		strings.TrimRight(privKey, "\n"),
+		"MOTECH_KEY",
+		"chmod 600 " + keyFile,
+		"# 2) connect (over NetBird mesh)",
+		"ssh -i " + keyFile + " -o StrictHostKeyChecking=no " + user + "@" + ip,
+	}, "\n")
+
 	writeJSON(w, http.StatusOK, map[string]any{
 		"ip":          ip,
-		"user":        "Administrator",
+		"user":        user,
 		"public_key":  pubKey,
 		"private_key": privKey,
-		"ssh":         "ssh Administrator@" + ip,
+		"key_file":    keyFile,
+		"ssh":         "ssh -i " + keyFile + " " + user + "@" + ip,
+		"ready":       ready,
 		"note":        "NetBird mesh: الوكيل يحتاج المفتاح الخاص + الاتصال من جهاز منضمّ لنفس شبكة NetBird.",
 	})
+}
+
+// shortID returns the first 8 chars of a UUID for friendly file names.
+func shortID(id string) string {
+	if len(id) >= 8 {
+		return id[:8]
+	}
+	return id
 }
 
 // RotateKey deactivates the current key and creates a new pending one. The

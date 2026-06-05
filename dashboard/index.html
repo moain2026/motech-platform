@@ -272,6 +272,32 @@
   </div>
 </div>
 
+<!-- CONNECTION MODAL -->
+<div x-show="conn" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+  <div class="bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl p-6 w-full sm:max-w-lg space-y-4 fade-enter max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between"><h2 class="font-bold text-lg">معلومات الاتصال <span class="text-sm text-slate-400" x-text="conn&&conn.name"></span></h2><button @click="conn=null" class="text-slate-400 text-xl">✕</button></div>
+    <template x-if="conn">
+      <div class="space-y-3 text-sm">
+        <div class="grid grid-cols-2 gap-2">
+          <div class="bg-slate-50 dark:bg-slate-800 rounded-xl p-3"><div class="text-xs text-slate-400 mb-1">NetBird IP</div><div class="flex items-center gap-1"><code class="flex-1 font-mono text-brand-700 dark:text-brand-100" x-text="conn.ip"></code><button @click="copy(conn.ip)" class="p-1.5 bg-brand-600 text-white rounded-lg text-xs">📋</button></div></div>
+          <div class="bg-slate-50 dark:bg-slate-800 rounded-xl p-3"><div class="text-xs text-slate-400 mb-1">User</div><div class="flex items-center gap-1"><code class="flex-1 font-mono text-brand-700 dark:text-brand-100" x-text="conn.user"></code><button @click="copy(conn.user)" class="p-1.5 bg-brand-600 text-white rounded-lg text-xs">📋</button></div></div>
+        </div>
+        <div class="bg-slate-50 dark:bg-slate-800 rounded-xl p-3"><div class="flex items-center justify-between mb-1"><span class="text-xs text-slate-400">أمر SSH جاهز</span><button @click="copy(conn.ssh)" class="text-xs text-brand-500">نسخ الأمر</button></div><code class="block font-mono text-xs text-brand-700 dark:text-brand-100 break-all" x-text="conn.ssh"></code></div>
+        <div class="bg-slate-50 dark:bg-slate-800 rounded-xl p-3">
+          <div class="flex items-center justify-between mb-1"><span class="text-xs text-slate-400">المفتاح الخاص (Private Key)</span><button @click="copy(conn.private_key)" class="text-xs text-brand-500">نسخ المفتاح</button></div>
+          <pre class="font-mono text-[10px] leading-tight text-slate-500 dark:text-slate-400 max-h-24 overflow-y-auto whitespace-pre-wrap break-all" x-text="conn.private_key"></pre>
+        </div>
+        <div class="bg-accent-50 dark:bg-accent-600/10 border border-accent-500/30 rounded-xl p-3">
+          <div class="flex items-center justify-between mb-1"><span class="text-xs font-bold text-accent-600">⚡ بلوك جاهز للصق في وكيل AI</span><button @click="copy(conn.ready)" class="text-xs text-accent-600 font-bold">نسخ الكل</button></div>
+          <pre class="font-mono text-[10px] leading-tight text-slate-600 dark:text-slate-300 max-h-32 overflow-y-auto whitespace-pre-wrap break-all" x-text="conn.ready"></pre>
+        </div>
+        <button @click="copy(conn.ready);toast('تم نسخ البلوك الجاهز','success')" class="w-full bg-accent-600 hover:bg-accent-500 text-white py-3 rounded-xl font-bold transition">📋 نسخ البلوك الجاهز للاتصال</button>
+        <button @click="conn=null" class="w-full border border-slate-200 dark:border-slate-700 py-2.5 rounded-xl">إغلاق</button>
+      </div>
+    </template>
+  </div>
+</div>
+
 <!-- TOASTS -->
 <div class="fixed bottom-5 left-1/2 -translate-x-1/2 z-[60] space-y-2 w-full max-w-xs px-4">
   <template x-for="t in toasts" :key="t.id">
@@ -293,7 +319,7 @@ function app(){
     page:'overview', sidebar:false,
     clients:[], activity:[], nbMode:'-',
     search:'', filter:'',
-    showAdd:false, created:null, form:{name:'',branch:'',contact_name:'',contact_phone:''},
+    showAdd:false, created:null, conn:null, form:{name:'',branch:'',contact_name:'',contact_phone:''},
     installerURL: location.origin + '/download/motech-connect.exe',
     toasts:[],
     ic:{
@@ -366,8 +392,11 @@ function app(){
       }finally{this.loading=false}
     },
     async copyConn(c){
-      const r=await fetch('/api/clients/'+c.id+'/connection',{headers:this.hdr()});const j=await r.json();
-      this.copy(`IP: ${j.ip}\nUser: ${j.user}\nSSH: ${j.ssh}`);this.toast('تم نسخ معلومات الاتصال','success');
+      try{
+        const r=await fetch('/api/clients/'+c.id+'/connection',{headers:this.hdr()});
+        if(!r.ok){this.toast('تعذّر جلب معلومات الاتصال','error');return}
+        const j=await r.json(); j.name=c.name; this.conn=j;
+      }catch(e){this.toast('خطأ في الاتصال','error')}
     },
     async rotate(c){await fetch('/api/clients/'+c.id+'/rotate-key',{method:'POST',headers:this.hdr()});this.toast('تم طلب تدوير المفتاح','info');this.refresh()},
     async disable(c){if(!confirm('تعطيل '+c.name+'؟'))return;await fetch('/api/clients/'+c.id+'/disable',{method:'POST',headers:this.hdr()});this.toast('تم التعطيل','info');this.refresh()},
