@@ -166,3 +166,10 @@
   - المستخدم حاول تغيير الإيميل/كلمة المرور من Settings لـ moain2026@gmail.com لكن **التغيير ما حُفظ** (DB ظل admin@motech.local). الأرجح: أدخل "كلمة المرور الحالية" خطأ → backend رفض (401 "كلمة المرور الحالية غير صحيحة") والـ toast ما انتبه له. ثم حاول يدخل بإيميل غير محفوظ → 401 → "مافي ردة فعل".
   - **الإصلاح**: ضبطت admin مباشرة في DB: email=moain2026@gmail.com، password=moain2026@gmail.com (bcrypt cost10 عبر bcrypt الخاص بالمشروع). تحقق: login بالجديد → 200 ✓، بالقديم → 401 ✓.
   - كود UpdateMe + saveProfile سليم (يطلب current_password ويعرض الخطأ كـ toast). لا تغيير كود مطلوب.
+
+### تكملة Session 3 — السبب الجذري لـ"الأزرار ميتة": كاش قديم
+- بعد الدخول، شكا المستخدم إن نسخ/إضافة/تعديل ما تستجيب. فحصت عبر CDP على نفس اللوحة:
+  - كل الدوال تشتغل (openConn يملأ conn بـ ip/key/ssh، page switch، add modal). صفر أخطاء JS. لا overlay حاجب.
+  - الاكتشاف: اللوحة تُخدَّم عبر Cloudflare (`cf-cache-status: DYNAMIC`) وHTML بلا أي Cache-Control → متصفح المستخدم يخدم نسخة index.html قديمة (قبل إصلاح handler) ⇒ الأزرار تبدو ميتة عنده بينما تشتغل على VM (نسخة طازجة).
+- **الإصلاح الدائم**: لفّيت FileServer بـ handler يضيف `Cache-Control: no-store/no-cache/must-revalidate` + Pragma + Expires لكل ملف HTML (الـ shell اللي يحمل Alpine + كل الـ handlers). go build OK، أعدت بناء+تشغيل الخدمة، تحققت الهيدر ظاهر.
+- يتبقى: المستخدم يعمل hard-refresh مرة واحدة (Ctrl+Shift+R) لجلب النسخة الجديدة.

@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -79,7 +80,19 @@ func main() {
 	// static dashboard
 	dashDir := "../dashboard"
 	if _, err := os.Stat(dashDir); err == nil {
-		r.Handle("/*", http.FileServer(http.Dir(dashDir)))
+		fs := http.FileServer(http.Dir(dashDir))
+		// Prevent stale-cache lockouts: never cache the HTML shell (it holds the
+		// Alpine app + all button handlers). Browsers/Cloudflare caching an old
+		// index.html was making buttons appear dead after a deploy.
+		r.Handle("/*", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			p := req.URL.Path
+			if p == "/" || strings.HasSuffix(p, ".html") {
+				w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+				w.Header().Set("Pragma", "no-cache")
+				w.Header().Set("Expires", "0")
+			}
+			fs.ServeHTTP(w, req)
+		}))
 	}
 
 	srv := &http.Server{
