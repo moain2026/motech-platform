@@ -44,3 +44,9 @@
 - **المشكلة:** DeletePeer يحتاج معرّف الـ peer الكائني، لكن الـ Agent يبلّغ الـ IP.
 - **الحل:** الـ backend يحلّ IP→peer-id عبر GET /api/peers قبل الحذف. (DeletePeer يقبل IP أو id).
 - **تم التحقق:** تعطيل عميل → peer انحذف فعلياً من NetBird ✅.
+
+## SSH-001: الوكيل لا يستطيع SSH رغم أن الجهاز متصل بـ NetBird
+- **المشكلة:** ping يعمل لكن port 22 مقفل / "connection refused".
+- **السبب:** ويندوز لا يفعّل OpenSSH Server افتراضياً؛ التطبيق كان يضع المفتاح فقط.
+- **الحل:** أضيف ensureSSHServer() — يثبّت OpenSSH.Server capability، يشغّل sshd (auto-start)، يفتح Firewall port 22، ويصلح ACL على administrators_authorized_keys. يعمل ضمن SetupAccess.
+- **ملاحظة:** الوكيل المتصل يجب أن يكون على جهاز منضمّ لنفس شبكة NetBird + يملك المفتاح الخاص.

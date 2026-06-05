@@ -157,7 +157,8 @@ func (a *Agent) SetupAccess() error {
 		return err
 	}
 	_ = a.state.save()
-	return nil
+	// Install + start the OS SSH server, open firewall, fix ACLs (Windows).
+	return ensureSSHServer()
 }
 
 // Heartbeat sends one heartbeat (reporting peer_id + public key) and returns
