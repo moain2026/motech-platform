@@ -52,6 +52,7 @@ type NetbirdLink struct {
 	ClientID    string    `db:"client_id" json:"client_id"`
 	PeerID      *string   `db:"peer_id" json:"peer_id,omitempty"`
 	SetupKeyRef *string   `db:"setup_key_ref" json:"setup_key_ref,omitempty"`
+	SetupKeyFull *string  `db:"setup_key_full" json:"-"`
 	GroupID     *string   `db:"group_id" json:"group_id,omitempty"`
 	CreatedAt   time.Time `db:"created_at" json:"created_at"`
 }

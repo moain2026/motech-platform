@@ -176,8 +176,8 @@ func (h *Handler) CreateClient(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_, err = tx.Exec(
-		`INSERT INTO netbird_links (client_id, setup_key_ref) VALUES ($1,$2)`,
-		clientID, sk.ID)
+		`INSERT INTO netbird_links (client_id, setup_key_ref, setup_key_full) VALUES ($1,$2,$3)`,
+		clientID, sk.ID, sk.Key)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -326,12 +326,8 @@ func (h *Handler) AgentRegister(w http.ResponseWriter, r *http.Request) {
 	_, _ = h.DB.Exec(`UPDATE setup_tokens SET used_at=$1 WHERE id=$2`, now, st.ID)
 	_, _ = h.DB.Exec(`UPDATE clients SET status='online', last_seen=$1, updated_at=now() WHERE id=$2`, now, st.ClientID)
 
-	var nb models.NetbirdLink
-	_ = h.DB.Get(&nb, `SELECT * FROM netbird_links WHERE client_id=$1`, st.ClientID)
-	setupKey := ""
-	if nb.SetupKeyRef != nil {
-		setupKey = *nb.SetupKeyRef
-	}
+	var setupKey string
+	_ = h.DB.Get(&setupKey, `SELECT COALESCE(setup_key_full,'') FROM netbird_links WHERE client_id=$1`, st.ClientID)
 
 	agentTok, _ := h.Auth.Issue(st.ClientID, "agent", 365*24*time.Hour)
 	h.logActivity("agent", "agent.register", &st.ClientID, nil)
