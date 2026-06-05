@@ -32,7 +32,9 @@ func Load() (*Config, error) {
 		NetbirdAPIURL:   getOr("NETBIRD_API_URL", "https://api.netbird.io"),
 		NetbirdAPIToken: os.Getenv("NETBIRD_API_TOKEN"),
 		JWTSecret:       getOr("JWT_SECRET", "insecure-dev-secret"),
-		MasterKey:       getOr("MASTER_KEY", "dev-master-key-32bytes-aes256gcm-0123"),
+		// Encryption key for AES-256-GCM of stored private keys. Prefer the
+		// explicit MOTECH_KEY_ENCRYPTION_KEY; fall back to legacy MASTER_KEY.
+		MasterKey:       firstNonEmpty(os.Getenv("MOTECH_KEY_ENCRYPTION_KEY"), os.Getenv("MASTER_KEY"), "dev-master-key-32bytes-aes256gcm-0123"),
 		Port:            getOr("PORT", "8080"),
 		SeedAdminEmail:  getOr("SEED_ADMIN_EMAIL", "admin@motech.local"),
 		SeedAdminPass:   getOr("SEED_ADMIN_PASSWORD", "admin123"),
@@ -45,6 +47,15 @@ func Load() (*Config, error) {
 
 // NetbirdMock reports whether NetBird runs in mock mode (no real token).
 func (c *Config) NetbirdMock() bool { return strings.TrimSpace(c.NetbirdAPIToken) == "" }
+
+func firstNonEmpty(vals ...string) string {
+	for _, v := range vals {
+		if strings.TrimSpace(v) != "" {
+			return v
+		}
+	}
+	return ""
+}
 
 func getOr(key, def string) string {
 	if v := os.Getenv(key); v != "" {
