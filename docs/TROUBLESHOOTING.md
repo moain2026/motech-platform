@@ -19,3 +19,17 @@
 ---
 
 > أضف كل مشكلة جديدة هنا فور حلّها.
+
+---
+
+## EXE-001: SmartScreen warning on first run (متوقّع)
+- **المشكلة:** ويندوز يعرض "تمكّن Windows من حماية جهازك / SmartScreen".
+- **السبب:** الملف غير موقّع رقمياً (code-signing cert غير مُشترى بعد).
+- **الحل:** "مزيد من المعلومات" → "تشغيل على أي حال" (Run anyway).
+- **تجنّب:** شراء code-signing certificate (مرحلة M5/الإنتاج).
+
+## EXE-002: GUI لا تظهر بعد التشغيل
+- **المشكلة:** بعد فتح motech-connect.exe (GUI) لا تظهر نافذة إدخال الترخيص.
+- **الأسباب المحتملة:** رفض UAC (يحتاج admin)، أو فشل walk runtime على بعض إصدارات ويندوز.
+- **الحل (موثوق):** استخدم النسخة البديلة **motech-setup.exe** (نافذة console تفاعلية، تسأل الرمز نصياً وتثبّت كل شي). دائماً تعمل.
+- **رابط:** https://qfetmfdn.gensparkclaw.com/download/motech-setup.exe
