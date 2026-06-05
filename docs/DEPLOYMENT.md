@@ -1,8 +1,12 @@
 # DEPLOYMENT.md — دليل النشر
 
-## التطوير (الحالي)
-- Backend يعمل محلياً على :8080، PostgreSQL محلي.
-- NetBird في mock mode (بلا توكن).
+## التطوير/العرض الحالي (LIVE)
+- Backend خدمة systemd دائمة على :8080، PostgreSQL محلي.
+- NetBird في **live mode** (PAT في .env).
+- **اللوحة منشورة على:** https://qfetmfdn.gensparkclaw.com (عبر Caddy reverse_proxy + HTTPS تلقائي).
+- ملف Caddy: `/etc/caddy/conf.d/custom.caddy`.
+- كلمة سر الأدمن الافتراضية **تم تغييرها** (محفوظة في SEED_ADMIN_PASSWORD داخل .env).
+- ⚠️ للإنتاج: أضف rate-limiting على login/register، وراجع SECURITY.md.
 
 ## الإنتاج (مستقبلاً — VPS خاص)
 1. **VPS**: ثبّت Go + PostgreSQL (أو DB مُدارة عبر `DATABASE_URL`).
