@@ -173,3 +173,10 @@
   - الاكتشاف: اللوحة تُخدَّم عبر Cloudflare (`cf-cache-status: DYNAMIC`) وHTML بلا أي Cache-Control → متصفح المستخدم يخدم نسخة index.html قديمة (قبل إصلاح handler) ⇒ الأزرار تبدو ميتة عنده بينما تشتغل على VM (نسخة طازجة).
 - **الإصلاح الدائم**: لفّيت FileServer بـ handler يضيف `Cache-Control: no-store/no-cache/must-revalidate` + Pragma + Expires لكل ملف HTML (الـ shell اللي يحمل Alpine + كل الـ handlers). go build OK، أعدت بناء+تشغيل الخدمة، تحققت الهيدر ظاهر.
 - يتبقى: المستخدم يعمل hard-refresh مرة واحدة (Ctrl+Shift+R) لجلب النسخة الجديدة.
+
+### تكملة Session 3 — السبب الجذري الحقيقي: Tailwind CDN + modals غير مرئية
+- دليل حاسم من المستخدم: **الحذف والتعطيل يشتغلان، الإضافة/التعديل/النسخ لا**.
+  - الفرق في الكود: del/disable = `@click` يستدعي دالة فورًا (confirm+fetch، صفر CSS). إضافة/تعديل/نسخ = تضبط متغير حالة لإظهار **modal** عبر `x-show` بكلاسات Tailwind (`fixed inset-0 z-50 flex bg-black/50`).
+  - السبب: اللوحة تعتمد `cdn.tailwindcss.com` (يولّد CSS وقت التشغيل). على شبكة/جهاز المستخدم الـ CDN بطيء أو محجوب → كلاسات الـ modal ما تُولَّد → الحالة تتغير (showAdd=true) لكن الـ modal بلا position/size = غير مرئي. del/disable يشتغلان لأنهما لا يحتاجان CSS إطلاقًا. = "الأزرار ميتة" عند المستخدم بينما تشتغل على VM.
+- **الإصلاح**: أضفت CSS صريح `.mt-modal` (position:fixed;inset:0;z-index:50;display:flex;background rgba) داخل `<style>` المحلي + علّمت الـ3 modals بالكلاس. الآن تُعرض بغض النظر عن Tailwind CDN. تحقق عبر CDP بعد reload: modal display:flex, fixed, 937x947, visible ✓. (سابقًا أضفت no-cache headers — مفيد لجلب النسخة الجديدة.)
+- ملف اللوحة ثابت (FileServer) — التغيير حيّ فورًا، بدون build.
