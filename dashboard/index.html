@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Al-Abbasi Soft — Motech Platform</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <style>
+    body { font-family: system-ui, "Segoe UI", Tahoma, sans-serif; }
+    [x-cloak] { display: none !important; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800" x-data="app()" x-init="init()">
+
+  <!-- Login -->
+  <div x-show="!token" x-cloak class="min-h-screen flex items-center justify-center">
+    <form @submit.prevent="login()" class="bg-white p-8 rounded-2xl shadow-lg w-96 space-y-4">
+      <div class="text-center">
+        <div class="text-2xl font-bold text-slate-900">Al-Abbasi Soft</div>
+        <div class="text-sm text-slate-500">نظام إدارة الوصول الآمن</div>
+      </div>
+      <input x-model="email" type="email" placeholder="البريد الإلكتروني" class="w-full border rounded-lg px-3 py-2" />
+      <input x-model="password" type="password" placeholder="كلمة المرور" class="w-full border rounded-lg px-3 py-2" />
+      <button class="w-full bg-slate-900 text-white rounded-lg py-2 hover:bg-slate-700">دخول</button>
+      <p x-show="error" x-text="error" class="text-red-600 text-sm text-center"></p>
+    </form>
+  </div>
+
+  <!-- Dashboard -->
+  <div x-show="token" x-cloak class="min-h-screen">
+    <header class="bg-slate-900 text-white px-6 py-4 flex justify-between items-center">
+      <div class="font-bold text-lg">Al-Abbasi Soft <span class="text-slate-400 text-sm">| لوحة التحكم</span></div>
+      <div class="flex items-center gap-3 text-sm">
+        <span class="px-2 py-1 rounded bg-slate-700" x-text="'NetBird: ' + nbMode"></span>
+        <button @click="logout()" class="underline">خروج</button>
+      </div>
+    </header>
+
+    <main class="p-6 max-w-6xl mx-auto space-y-6">
+      <div class="flex justify-between items-center">
+        <h1 class="text-xl font-bold">العملاء (الفروع)</h1>
+        <button @click="showAdd=true" class="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-500">+ إضافة عميل</button>
+      </div>
+
+      <!-- clients table -->
+      <div class="bg-white rounded-xl shadow overflow-hidden">
+        <table class="w-full text-sm text-right">
+          <thead class="bg-slate-50 text-slate-500">
+            <tr>
+              <th class="px-4 py-3">الاسم</th>
+              <th class="px-4 py-3">الفرع</th>
+              <th class="px-4 py-3">الحالة</th>
+              <th class="px-4 py-3">آخر ظهور</th>
+              <th class="px-4 py-3">إجراءات</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="c in clients" :key="c.id">
+              <tr class="border-t">
+                <td class="px-4 py-3 font-medium" x-text="c.name"></td>
+                <td class="px-4 py-3" x-text="c.branch || '-'"></td>
+                <td class="px-4 py-3">
+                  <span class="px-2 py-1 rounded-full text-xs"
+                    :class="{
+                      'bg-green-100 text-green-700': c.status==='online',
+                      'bg-slate-200 text-slate-600': c.status==='offline'||c.status==='pending',
+                      'bg-red-100 text-red-700': c.status==='disabled'
+                    }" x-text="statusLabel(c.status)"></span>
+                </td>
+                <td class="px-4 py-3 text-slate-500" x-text="c.last_seen ? new Date(c.last_seen).toLocaleString('ar') : '—'"></td>
+                <td class="px-4 py-3 space-x-1 space-x-reverse">
+                  <button @click="copyConn(c)" class="text-blue-600 hover:underline">نسخ الاتصال</button>
+                  <button @click="rotate(c)" class="text-amber-600 hover:underline">تدوير المفتاح</button>
+                  <button @click="disable(c)" class="text-orange-600 hover:underline">تعطيل</button>
+                  <button @click="del(c)" class="text-red-600 hover:underline">حذف</button>
+                </td>
+              </tr>
+            </template>
+            <tr x-show="clients.length===0"><td colspan="5" class="px-4 py-8 text-center text-slate-400">لا يوجد عملاء بعد</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <!-- Add client modal -->
+  <div x-show="showAdd" x-cloak class="fixed inset-0 bg-black/40 flex items-center justify-center">
+    <div class="bg-white rounded-2xl p-6 w-96 space-y-3">
+      <h2 class="font-bold text-lg">إضافة عميل جديد</h2>
+      <input x-model="form.name" placeholder="اسم العميل *" class="w-full border rounded-lg px-3 py-2" />
+      <input x-model="form.branch" placeholder="الفرع" class="w-full border rounded-lg px-3 py-2" />
+      <input x-model="form.contact_name" placeholder="المسؤول" class="w-full border rounded-lg px-3 py-2" />
+      <input x-model="form.contact_phone" placeholder="الهاتف" class="w-full border rounded-lg px-3 py-2" />
+      <div class="flex gap-2 justify-end pt-2">
+        <button @click="showAdd=false" class="px-4 py-2 rounded-lg border">إلغاء</button>
+        <button @click="addClient()" class="px-4 py-2 rounded-lg bg-emerald-600 text-white">حفظ</button>
+      </div>
+      <div x-show="created" x-cloak class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-sm">
+        <div class="font-bold text-emerald-800">تم الإنشاء ✓</div>
+        <div>رمز التفعيل (يظهر مرة واحدة): <code class="font-mono bg-white px-1" x-text="created?.setup_token"></code></div>
+        <div>NetBird Setup Key: <code class="font-mono bg-white px-1 break-all" x-text="created?.netbird_setup"></code></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function app() {
+      return {
+        token: localStorage.getItem('motech_token') || '',
+        email:'', password:'', error:'',
+        clients: [], nbMode:'-',
+        showAdd:false, created:null,
+        form:{name:'',branch:'',contact_name:'',contact_phone:''},
+        async init(){ if(this.token){ await this.health(); await this.load(); } },
+        hdr(){ return { 'Content-Type':'application/json', 'Authorization':'Bearer '+this.token }; },
+        async health(){ try{ const r=await fetch('/health'); const j=await r.json(); this.nbMode=j.netbird_mode; }catch(e){} },
+        async login(){
+          this.error='';
+          const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:this.email,password:this.password})});
+          if(!r.ok){ this.error='بيانات الدخول غير صحيحة'; return; }
+          const j=await r.json(); this.token=j.token; localStorage.setItem('motech_token',this.token);
+          await this.health(); await this.load();
+        },
+        logout(){ this.token=''; localStorage.removeItem('motech_token'); },
+        async load(){ const r=await fetch('/api/clients',{headers:this.hdr()}); if(r.ok) this.clients=await r.json(); },
+        statusLabel(s){ return {online:'🟢 متصل',offline:'⚪ غير متصل',pending:'⏳ بانتظار',disabled:'🔴 معطّل'}[s]||s; },
+        async addClient(){
+          if(!this.form.name) return;
+          const r=await fetch('/api/clients',{method:'POST',headers:this.hdr(),body:JSON.stringify(this.form)});
+          if(r.ok){ this.created=await r.json(); this.form={name:'',branch:'',contact_name:'',contact_phone:''}; await this.load(); }
+        },
+        async copyConn(c){
+          const r=await fetch('/api/clients/'+c.id+'/connection',{headers:this.hdr()});
+          const j=await r.json(); navigator.clipboard.writeText('IP: '+j.ip+'\nUser: '+j.user); alert('تم نسخ معلومات الاتصال');
+        },
+        async rotate(c){ await fetch('/api/clients/'+c.id+'/rotate-key',{method:'POST',headers:this.hdr()}); alert('تم طلب تدوير المفتاح'); },
+        async disable(c){ if(confirm('تعطيل '+c.name+'؟')){ await fetch('/api/clients/'+c.id+'/disable',{method:'POST',headers:this.hdr()}); await this.load(); } },
+        async del(c){ if(confirm('حذف '+c.name+' نهائياً؟')){ await fetch('/api/clients/'+c.id,{method:'DELETE',headers:this.hdr()}); await this.load(); } },
+      }
+    }
+  </script>
+</body>
+</html>

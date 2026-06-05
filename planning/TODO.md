@@ -1,13 +1,14 @@
 # TODO.md — المهام المتبقية
 
-## 🔴 الآن (Phase 1 — Backend)
-- [ ] `go.mod` + هيكل (`cmd/server`, `internal/{config,db,auth,handlers,models,netbird}`)
-- [ ] Migrations SQL (6 جداول)
-- [ ] Config loader (env: DATABASE_URL, NETBIRD_API_URL, NETBIRD_API_TOKEN, JWT_SECRET, MASTER_KEY, PORT)
-- [ ] DB connection (sqlx)
-- [ ] JWT auth + admin login + middleware
-- [ ] Clients CRUD + Setup Token (one-time) + Activity Log
-- [ ] Health endpoint + run on :8080
+## ✅ مكتمل (Phase 1 — Backend)
+- [x] `go.mod` + هيكل كامل
+- [x] Migrations SQL (6 جداول) + تطبيق تلقائي
+- [x] Config loader (كل المتغيرات + fail-fast)
+- [x] DB connection (sqlx)
+- [x] JWT auth (admin+agent) + middleware + bcrypt + AES-GCM
+- [x] Clients CRUD + Setup Token (one-time) + Activity Log + connection
+- [x] Agent register + heartbeat
+- [x] Dashboard أولي + Health + يعمل على :8080 (E2E مختبر)
 
 ## 🟡 التالي (Phase 2 — NetBird)
 - [ ] NetBird client (switchable URL)

@@ -1,0 +1,379 @@
+// Package handlers implements all HTTP endpoints for the Motech Platform API.
+package handlers
+
+import (
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"net/http"
+	"time"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/jmoiron/sqlx"
+
+	"motech-platform/backend/internal/auth"
+	"motech-platform/backend/internal/config"
+	"motech-platform/backend/internal/models"
+	"motech-platform/backend/internal/netbird"
+)
+
+// Handler bundles dependencies shared by all endpoints.
+type Handler struct {
+	DB  *sqlx.DB
+	Cfg *config.Config
+	Auth *auth.Manager
+	NB  *netbird.Client
+}
+
+// New builds a Handler.
+func New(db *sqlx.DB, cfg *config.Config, am *auth.Manager, nb *netbird.Client) *Handler {
+	return &Handler{DB: db, Cfg: cfg, Auth: am, NB: nb}
+}
+
+// ---- helpers ----
+
+func writeJSON(w http.ResponseWriter, code int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	_ = json.NewEncoder(w).Encode(v)
+}
+
+func writeErr(w http.ResponseWriter, code int, msg string) {
+	writeJSON(w, code, map[string]string{"error": msg})
+}
+
+// randToken returns a URL-safe random token and its sha256 hex hash.
+func randToken() (plain, hash string) {
+	b := make([]byte, 18)
+	_, _ = rand.Read(b)
+	plain = hex.EncodeToString(b)
+	// format as XXXX-XXXX-XXXX for readability
+	formatted := plain[0:4] + "-" + plain[4:8] + "-" + plain[8:12]
+	sum := sha256.Sum256([]byte(formatted))
+	return formatted, hex.EncodeToString(sum[:])
+}
+
+func hashToken(t string) string {
+	sum := sha256.Sum256([]byte(t))
+	return hex.EncodeToString(sum[:])
+}
+
+func (h *Handler) logActivity(actor, action string, clientID *string, meta map[string]any) {
+	b, _ := json.Marshal(meta)
+	_, _ = h.DB.Exec(
+		`INSERT INTO activity_log (actor, client_id, action, metadata) VALUES ($1,$2,$3,$4)`,
+		actor, clientID, action, b,
+	)
+}
+
+// ---- health ----
+
+// Health reports server + DB status.
+func (h *Handler) Health(w http.ResponseWriter, r *http.Request) {
+	dbStatus := "ok"
+	if err := h.DB.Ping(); err != nil {
+		dbStatus = "error"
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"status":       "ok",
+		"db":           dbStatus,
+		"netbird_mode": map[bool]string{true: "mock", false: "live"}[h.NB.IsMock()],
+	})
+}
+
+// ---- auth ----
+
+type loginReq struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+// Login authenticates an admin and returns a JWT.
+func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
+	var req loginReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid body")
+		return
+	}
+	var a models.Admin
+	err := h.DB.Get(&a, `SELECT * FROM admins WHERE email=$1`, req.Email)
+	if err != nil || !auth.CheckPassword(a.PasswordHash, req.Password) {
+		writeErr(w, http.StatusUnauthorized, "invalid credentials")
+		return
+	}
+	tok, err := h.Auth.Issue(a.ID, "admin", 12*time.Hour)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, "token error")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"token": tok, "email": a.Email})
+}
+
+// ---- clients ----
+
+type createClientReq struct {
+	Name         string `json:"name"`
+	Branch       string `json:"branch"`
+	ContactName  string `json:"contact_name"`
+	ContactPhone string `json:"contact_phone"`
+}
+
+// ListClients returns all clients (newest first).
+func (h *Handler) ListClients(w http.ResponseWriter, r *http.Request) {
+	var cs []models.Client
+	if err := h.DB.Select(&cs, `SELECT * FROM clients ORDER BY created_at DESC`); err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if cs == nil {
+		cs = []models.Client{}
+	}
+	writeJSON(w, http.StatusOK, cs)
+}
+
+// CreateClient creates a client + one-time setup token + ssh key placeholder +
+// NetBird setup key, and returns the plaintext setup token ONCE.
+func (h *Handler) CreateClient(w http.ResponseWriter, r *http.Request) {
+	var req createClientReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Name == "" {
+		writeErr(w, http.StatusBadRequest, "name is required")
+		return
+	}
+	tx, err := h.DB.Beginx()
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer tx.Rollback()
+
+	var clientID string
+	err = tx.Get(&clientID,
+		`INSERT INTO clients (name, branch, contact_name, contact_phone, status)
+		 VALUES ($1,$2,$3,$4,'pending') RETURNING id`,
+		req.Name, nullable(req.Branch), nullable(req.ContactName), nullable(req.ContactPhone))
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	plain, hash := randToken()
+	_, err = tx.Exec(
+		`INSERT INTO setup_tokens (client_id, token_hash, expires_at)
+		 VALUES ($1,$2,$3)`, clientID, hash, time.Now().Add(24*time.Hour))
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	// ssh key placeholder (real keypair generated by agent on the client)
+	_, _ = tx.Exec(`INSERT INTO ssh_keys (client_id, active) VALUES ($1,true)`, clientID)
+
+	// NetBird setup key (mock or live)
+	sk, err := h.NB.CreateSetupKey("motech-" + req.Name)
+	if err != nil {
+		writeErr(w, http.StatusBadGateway, "netbird: "+err.Error())
+		return
+	}
+	_, err = tx.Exec(
+		`INSERT INTO netbird_links (client_id, setup_key_ref) VALUES ($1,$2)`,
+		clientID, sk.ID)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	if err := tx.Commit(); err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	h.logActivity(actorOf(r), "client.create", &clientID, map[string]any{"name": req.Name})
+
+	writeJSON(w, http.StatusCreated, map[string]any{
+		"id":             clientID,
+		"name":           req.Name,
+		"setup_token":    plain, // shown ONCE
+		"netbird_setup":  sk.Key,
+		"netbird_mode":   map[bool]string{true: "mock", false: "live"}[h.NB.IsMock()],
+		"installer":      "motech-connect.exe",
+		"note":           "أعطِ العميل الملف + رمز التفعيل. الرمز يظهر مرة واحدة فقط.",
+	})
+}
+
+// GetClient returns one client's details.
+func (h *Handler) GetClient(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	var c models.Client
+	if err := h.DB.Get(&c, `SELECT * FROM clients WHERE id=$1`, id); err != nil {
+		writeErr(w, http.StatusNotFound, "not found")
+		return
+	}
+	writeJSON(w, http.StatusOK, c)
+}
+
+// Connection returns the copy-able connection info for AI agents.
+func (h *Handler) Connection(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	var c models.Client
+	if err := h.DB.Get(&c, `SELECT * FROM clients WHERE id=$1`, id); err != nil {
+		writeErr(w, http.StatusNotFound, "not found")
+		return
+	}
+	var nb models.NetbirdLink
+	_ = h.DB.Get(&nb, `SELECT * FROM netbird_links WHERE client_id=$1`, id)
+	ip := "<netbird-ip-pending>"
+	if nb.PeerID != nil {
+		ip = *nb.PeerID
+	}
+	h.logActivity(actorOf(r), "client.connection_copied", &id, nil)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"ip":   ip,
+		"user": "Administrator",
+		"note": "private_key يُعرض هنا فقط عند تفعيل SSH التقليدي.",
+	})
+}
+
+// RotateKey marks a client for SSH key rotation on next heartbeat.
+func (h *Handler) RotateKey(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	res, _ := h.DB.Exec(`UPDATE ssh_keys SET active=false WHERE client_id=$1`, id)
+	_, _ = h.DB.Exec(`INSERT INTO ssh_keys (client_id, active) VALUES ($1,true)`, id)
+	_ = res
+	h.logActivity(actorOf(r), "client.rotate_key", &id, nil)
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "pending_rotation": true})
+}
+
+// DisableClient disables a client and revokes NetBird access.
+func (h *Handler) DisableClient(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	var nb models.NetbirdLink
+	_ = h.DB.Get(&nb, `SELECT * FROM netbird_links WHERE client_id=$1`, id)
+	if nb.PeerID != nil {
+		_ = h.NB.DeletePeer(*nb.PeerID)
+	}
+	_, err := h.DB.Exec(`UPDATE clients SET status='disabled', updated_at=now() WHERE id=$1`, id)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	h.logActivity(actorOf(r), "client.disable", &id, nil)
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "status": "disabled"})
+}
+
+// DeleteClient removes a client entirely.
+func (h *Handler) DeleteClient(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	var nb models.NetbirdLink
+	_ = h.DB.Get(&nb, `SELECT * FROM netbird_links WHERE client_id=$1`, id)
+	if nb.PeerID != nil {
+		_ = h.NB.DeletePeer(*nb.PeerID)
+	}
+	if _, err := h.DB.Exec(`DELETE FROM clients WHERE id=$1`, id); err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	h.logActivity(actorOf(r), "client.delete", &id, nil)
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// ---- activity ----
+
+// Activity returns recent activity-log entries.
+func (h *Handler) Activity(w http.ResponseWriter, r *http.Request) {
+	var rows []models.ActivityLog
+	if err := h.DB.Select(&rows, `SELECT * FROM activity_log ORDER BY created_at DESC LIMIT 100`); err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if rows == nil {
+		rows = []models.ActivityLog{}
+	}
+	writeJSON(w, http.StatusOK, rows)
+}
+
+// ---- agent ----
+
+type agentRegisterReq struct {
+	Token string `json:"token"`
+}
+
+// AgentRegister validates a one-time setup token and onboards the agent.
+func (h *Handler) AgentRegister(w http.ResponseWriter, r *http.Request) {
+	var req agentRegisterReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Token == "" {
+		writeErr(w, http.StatusBadRequest, "token required")
+		return
+	}
+	var st models.SetupToken
+	err := h.DB.Get(&st, `SELECT * FROM setup_tokens WHERE token_hash=$1`, hashToken(req.Token))
+	if err != nil {
+		writeErr(w, http.StatusUnauthorized, "invalid token")
+		return
+	}
+	if st.UsedAt != nil {
+		writeErr(w, http.StatusConflict, "token already used")
+		return
+	}
+	if time.Now().After(st.ExpiresAt) {
+		writeErr(w, http.StatusGone, "token expired")
+		return
+	}
+	now := time.Now()
+	_, _ = h.DB.Exec(`UPDATE setup_tokens SET used_at=$1 WHERE id=$2`, now, st.ID)
+	_, _ = h.DB.Exec(`UPDATE clients SET status='online', last_seen=$1, updated_at=now() WHERE id=$2`, now, st.ClientID)
+
+	var nb models.NetbirdLink
+	_ = h.DB.Get(&nb, `SELECT * FROM netbird_links WHERE client_id=$1`, st.ClientID)
+	setupKey := ""
+	if nb.SetupKeyRef != nil {
+		setupKey = *nb.SetupKeyRef
+	}
+
+	agentTok, _ := h.Auth.Issue(st.ClientID, "agent", 365*24*time.Hour)
+	h.logActivity("agent", "agent.register", &st.ClientID, nil)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"agent_token":      agentTok,
+		"netbird_setupkey": setupKey,
+		"netbird_api_url":  h.Cfg.NetbirdAPIURL,
+		"heartbeat_secs":   20,
+	})
+}
+
+// AgentHeartbeat updates last_seen and returns any pending commands.
+func (h *Handler) AgentHeartbeat(w http.ResponseWriter, r *http.Request) {
+	clientID, _ := r.Context().Value(auth.CtxSubject).(string)
+	var status string
+	err := h.DB.Get(&status, `SELECT status FROM clients WHERE id=$1`, clientID)
+	if err != nil {
+		writeErr(w, http.StatusUnauthorized, "unknown client")
+		return
+	}
+	if status != "disabled" {
+		_, _ = h.DB.Exec(`UPDATE clients SET last_seen=now(), status='online', updated_at=now() WHERE id=$1`, clientID)
+	}
+	// pending rotation = there exists an inactive key newer logic; simplified flag:
+	var pendingRotate bool
+	_ = h.DB.Get(&pendingRotate,
+		`SELECT EXISTS(SELECT 1 FROM ssh_keys WHERE client_id=$1 AND active=true AND rotated_at IS NULL AND created_at > now() - interval '5 minutes')`,
+		clientID)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"disabled": status == "disabled",
+		"rotate":   pendingRotate,
+	})
+}
+
+// ---- small utils ----
+
+func nullable(s string) any {
+	if s == "" {
+		return nil
+	}
+	return s
+}
+
+func actorOf(r *http.Request) string {
+	if v, ok := r.Context().Value(auth.CtxSubject).(string); ok && v != "" {
+		return v
+	}
+	return "system"
+}
