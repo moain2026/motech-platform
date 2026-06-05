@@ -53,10 +53,11 @@ func (c *Client) CreateSetupKey(name string) (*SetupKey, error) {
 		return &SetupKey{ID: "mock-" + id[:8], Key: "MOCK-SETUP-KEY-" + id}, nil
 	}
 	body := map[string]any{
-		"name":       name,
-		"type":       "one-off",
-		"expires_in": 86400,
+		"name":        name,
+		"type":        "one-off",
+		"expires_in":  86400,
 		"usage_limit": 1,
+		"auto_groups": []string{}, // assign client groups here later for ACLs
 	}
 	var out SetupKey
 	if err := c.do(http.MethodPost, "/api/setup-keys", body, &out); err != nil {

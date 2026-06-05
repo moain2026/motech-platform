@@ -25,8 +25,16 @@
   - heartbeat → status=online + pending commands ✓
   - فصل الصلاحيات admin/agent → 401 عند التجاوز ✓
 
+### ✅ NetBird LIVE (Phase 2 — جزئي) — متصل ومُختبَر
+- استلمت PAT وخزّنته في `.env` (gitignored).
+- الـ health يعرض `netbird_mode: live`.
+- تحقق مباشر مع NetBird Cloud API: peers (MoTech 100.95.163.196 ، ai-sandbox 100.95.128.10) ✓، groups ✓.
+- **إنشاء عميل من الـ API → يولّد setup key حقيقي في NetBird** (تأكّد بالاستعلام المباشر) ✓.
+- تنظيف بيانات الاختبار (DB + NetBird key).
+- أضفت `auto_groups` للـ payload (جاهز لربط ACLs لاحقاً).
+
 ### 🚧 التالي
-- تكامل NetBird الحقيقي (Phase 2) عند استلام PAT.
+- ربط DeletePeer بالـ peer_id الحقيقي بعد انضمام العميل (إكمال Phase 2).
 - بناء الـ Agent (.exe) الفعلي (Phase 3).
 
 ### 📌 قرارات اليوم
