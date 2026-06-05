@@ -37,6 +37,11 @@ type State struct {
 	SSHPrivateKey string `json:"ssh_private_key"`
 	RotatePending bool   `json:"rotate_pending"`
 	RotateApplied bool   `json:"rotate_applied"`
+	// RotateConfirmPending is true after we apply a rotation locally and need to
+	// tell the server (rotated_ok=true) until it acknowledges (rotate=false).
+	// This replaces the old "always send rotated_ok" behaviour that spammed the
+	// server every heartbeat and could prematurely confirm a NEW rotation.
+	RotateConfirmPending bool `json:"rotate_confirm_pending"`
 }
 
 // New creates an Agent pointed at the given backend base URL. If a previously
@@ -234,7 +239,7 @@ func (a *Agent) sendHeartbeat(token string) (map[string]any, int, error) {
 	var rotated bool
 	if a.state != nil {
 		pub, priv = a.state.SSHPublicKey, a.state.SSHPrivateKey
-		rotated = a.state.RotatePending && a.state.RotateApplied
+		rotated = a.state.RotateConfirmPending // only while a just-applied rotation awaits server ack
 	}
 	payload := map[string]any{
 		"peer_id":     netbirdPeerIP(),
@@ -312,6 +317,15 @@ func (a *Agent) loop(stop <-chan struct{}) {
 }
 
 // applyCommands reacts to server-issued commands.
+//
+// Rotation state machine:
+//   - server sets rotate=true (active key has rotated_at IS NULL)
+//   - we generate+install a fresh keypair, set RotateConfirmPending=true; the
+//     NEXT heartbeat sends rotated_ok=true + the new public/private key.
+//   - server flips rotated_at=now() and then reports rotate=false; we see that
+//     and clear RotateConfirmPending so we stop sending rotated_ok.
+// This is idempotent: if rotate stays true (server hasn't acked yet) we keep
+// sending rotated_ok without re-generating the key.
 func (a *Agent) applyCommands(cmds map[string]any) {
 	if b, _ := cmds["disabled"].(bool); b {
 		log.Println("server says DISABLED — removing access & leaving mesh")
@@ -320,7 +334,12 @@ func (a *Agent) applyCommands(cmds map[string]any) {
 		}
 		return
 	}
-	if b, _ := cmds["rotate"].(bool); b {
+	rotate, _ := cmds["rotate"].(bool)
+	if rotate {
+		if a.state.RotateConfirmPending {
+			// Already applied this rotation; just keep confirming until ack.
+			return
+		}
 		log.Println("server requests key rotation — applying")
 		if err := a.applyKeyRotation(); err != nil {
 			log.Printf("rotation failed: %v", err)
@@ -328,7 +347,16 @@ func (a *Agent) applyCommands(cmds map[string]any) {
 		}
 		a.state.RotatePending = true
 		a.state.RotateApplied = true
+		a.state.RotateConfirmPending = true
 		_ = a.state.save()
+		log.Println("key rotation applied — will confirm on next heartbeat")
+		return
+	}
+	// rotate=false: if we were waiting for an ack, the server has now confirmed.
+	if a.state.RotateConfirmPending {
+		a.state.RotateConfirmPending = false
+		_ = a.state.save()
+		log.Println("server acknowledged key rotation — confirm cycle complete")
 	}
 }
 
