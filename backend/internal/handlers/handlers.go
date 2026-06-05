@@ -111,6 +111,86 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"token": tok, "email": a.Email})
 }
 
+// Me returns the currently authenticated admin's profile.
+func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
+	id, _ := r.Context().Value(auth.CtxSubject).(string)
+	var a models.Admin
+	if err := h.DB.Get(&a, `SELECT * FROM admins WHERE id=$1`, id); err != nil {
+		writeErr(w, http.StatusNotFound, "admin not found")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"id": a.ID, "email": a.Email, "role": a.Role})
+}
+
+type updateMeReq struct {
+	CurrentPassword string `json:"current_password"`
+	Email           string `json:"email"`
+	NewPassword     string `json:"new_password"`
+}
+
+// UpdateMe lets the logged-in admin change their email and/or password.
+// The CURRENT password is required (re-auth) before any change is applied.
+// On success a fresh token is returned (so the session stays valid).
+func (h *Handler) UpdateMe(w http.ResponseWriter, r *http.Request) {
+	id, _ := r.Context().Value(auth.CtxSubject).(string)
+	var req updateMeReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid body")
+		return
+	}
+	var a models.Admin
+	if err := h.DB.Get(&a, `SELECT * FROM admins WHERE id=$1`, id); err != nil {
+		writeErr(w, http.StatusNotFound, "admin not found")
+		return
+	}
+	// Re-authenticate with the current password before allowing changes.
+	if !auth.CheckPassword(a.PasswordHash, req.CurrentPassword) {
+		writeErr(w, http.StatusUnauthorized, "كلمة المرور الحالية غير صحيحة")
+		return
+	}
+
+	newEmail := strings.TrimSpace(req.Email)
+	if newEmail != "" && newEmail != a.Email {
+		// basic email sanity + uniqueness
+		if !strings.Contains(newEmail, "@") {
+			writeErr(w, http.StatusBadRequest, "بريد غير صالح")
+			return
+		}
+		var n int
+		_ = h.DB.Get(&n, `SELECT COUNT(*) FROM admins WHERE email=$1 AND id<>$2`, newEmail, id)
+		if n > 0 {
+			writeErr(w, http.StatusConflict, "البريد مستخدم بالفعل")
+			return
+		}
+		if _, err := h.DB.Exec(`UPDATE admins SET email=$1 WHERE id=$2`, newEmail, id); err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		a.Email = newEmail
+	}
+
+	if req.NewPassword != "" {
+		if len(req.NewPassword) < 8 {
+			writeErr(w, http.StatusBadRequest, "كلمة المرور الجديدة قصيرة (8 أحرف على الأقل)")
+			return
+		}
+		hash, err := auth.HashPassword(req.NewPassword)
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, "hash error")
+			return
+		}
+		if _, err := h.DB.Exec(`UPDATE admins SET password_hash=$1 WHERE id=$2`, hash, id); err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+	}
+
+	h.logActivity("admin", "admin.update_profile", nil, nil)
+	// Issue a fresh token so the current session keeps working after the change.
+	tok, _ := h.Auth.Issue(a.ID, "admin", 12*time.Hour)
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "email": a.Email, "token": tok})
+}
+
 // ---- clients ----
 
 type createClientReq struct {

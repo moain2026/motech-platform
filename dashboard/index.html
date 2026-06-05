@@ -71,7 +71,7 @@
     </div>
     <nav class="flex-1 p-3 space-y-1 text-sm">
       <template x-for="item in nav" :key="item.id">
-        <button @click="page=item.id;sidebar=false"
+        <button @click="page=item.id;sidebar=false;if(item.id==='settings')loadProfile()"
           class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition"
           :class="page===item.id?'bg-white/15 font-bold':'text-white/70 hover:bg-white/10'">
           <span x-html="item.icon"></span><span x-text="item.label"></span>
@@ -266,6 +266,29 @@
           <div x-show="activityGroups.length===0" class="text-slate-400 py-12 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">لا نشاط مطابق</div>
         </div>
       </template>
+
+      <!-- ===== SETTINGS (admin account) ===== -->
+      <template x-if="page==='settings'">
+        <div class="fade-enter max-w-lg space-y-4">
+          <div class="font-bold text-lg">إعدادات الحساب</div>
+          <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-card border border-slate-100 dark:border-slate-800 space-y-4">
+            <div class="text-sm text-slate-400">غيّر بريد الدخول و/أو كلمة المرور. ترك حقل كلمة المرور الجديدة فارغاً = عدم تغييرها.</div>
+            <div>
+              <label class="text-xs text-slate-400">البريد (اسم الدخول)</label>
+              <input x-model="prof.email" type="email" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-brand-500" />
+            </div>
+            <div>
+              <label class="text-xs text-slate-400">كلمة المرور الجديدة <span class="text-slate-300">(اختياري، 8+ أحرف)</span></label>
+              <input x-model="prof.new_password" type="password" autocomplete="new-password" placeholder="••••••••" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-brand-500" />
+            </div>
+            <div class="border-t border-slate-100 dark:border-slate-800 pt-4">
+              <label class="text-xs text-slate-400">كلمة المرور الحالية <span class="text-red-400">*</span> <span class="text-slate-300">(للتأكيد)</span></label>
+              <input x-model="prof.current_password" type="password" autocomplete="current-password" placeholder="••••••••" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-brand-500" />
+            </div>
+            <button @click="saveProfile()" :disabled="profLoading||!prof.current_password" class="w-full bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white py-3 rounded-xl font-bold transition">حفظ التغييرات</button>
+          </div>
+        </div>
+      </template>
     </main>
   </div>
 </div>
@@ -366,6 +389,7 @@ function app(){
     search:'', filter:'',
     actSearch:'', actFilter:'', openDays:{},
     editC:null, editLoading:false,
+    prof:{email:'',new_password:'',current_password:''}, profLoading:false,
     showAdd:false, created:null, conn:null, form:{name:'',branch:'',contact_name:'',contact_phone:''},
     installerURL: location.origin + '/download/motech-connect.exe',
     toasts:[],
@@ -382,11 +406,13 @@ function app(){
       disable:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/></svg>',
       trash:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>',
       edit:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg>',
+      settings:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>',
     },
     get nav(){return[
       {id:'overview',label:'نظرة عامة',icon:this.ic.overview},
       {id:'clients',label:'العملاء',icon:this.ic.clients},
       {id:'activity',label:'سجل العمليات',icon:this.ic.activity},
+      {id:'settings',label:'الإعدادات',icon:this.ic.settings},
     ]},
     async init(){
       const h=new URLSearchParams(location.hash.slice(1)).get('t');
@@ -490,6 +516,19 @@ function app(){
     async disable(c){if(!confirm('تعطيل '+c.name+'؟'))return;await fetch('/api/clients/'+c.id+'/disable',{method:'POST',headers:this.hdr()});this.toast('تم التعطيل','info');this.refresh()},
     async del(c){if(!confirm('حذف '+c.name+' نهائياً؟'))return;await fetch('/api/clients/'+c.id,{method:'DELETE',headers:this.hdr()});this.toast('تم الحذف','info');this.refresh()},
     openEdit(c){this.editC={id:c.id,name:c.name,branch:c.branch||'',contact_name:c.contact_name||'',contact_phone:c.contact_phone||''}},
+    async loadProfile(){try{const r=await fetch('/api/me',{headers:this.hdr()});if(r.ok){const j=await r.json();this.prof.email=j.email;this.prof.new_password='';this.prof.current_password='';}}catch(e){}},
+    async saveProfile(){
+      if(!this.prof.current_password)return; this.profLoading=true;
+      try{
+        const r=await fetch('/api/me',{method:'PUT',headers:this.hdr(),body:JSON.stringify({current_password:this.prof.current_password,email:this.prof.email,new_password:this.prof.new_password})});
+        const j=await r.json().catch(()=>({}));
+        if(r.ok){
+          if(j.token){this.token=j.token;localStorage.setItem('motech_token',this.token);} // keep session alive
+          this.prof.new_password=''; this.prof.current_password='';
+          this.toast('تم حفظ إعدادات الحساب','success');
+        } else { this.toast(j.error||'فشل الحفظ','error'); }
+      }catch(e){this.toast('خطأ في الاتصال','error')}finally{this.profLoading=false}
+    },
     async saveEdit(){
       if(!this.editC||!this.editC.name)return; this.editLoading=true;
       try{

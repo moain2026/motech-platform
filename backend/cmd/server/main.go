@@ -62,6 +62,8 @@ func main() {
 	// admin-authenticated
 	r.Group(func(g chi.Router) {
 		g.Use(am.Middleware("admin"))
+		g.Get("/api/me", h.Me)
+		g.Put("/api/me", h.UpdateMe)
 		g.Get("/api/clients", h.ListClients)
 		g.Post("/api/clients", h.CreateClient)
 		g.Get("/api/clients/{id}", h.GetClient)
