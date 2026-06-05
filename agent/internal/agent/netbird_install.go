@@ -52,17 +52,20 @@ func (a *Agent) EnsureNetbirdInstalled() (string, error) {
 	}
 	defer os.Remove(tmp)
 
-	// NetBird ships an NSIS/exe installer; /S = silent.
+	// NetBird ships an NSIS installer; /S = silent install.
 	cmd := exec.Command(tmp, "/S")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("install netbird: %w (%s)", err, string(out))
 	}
-	// give the service a moment to register
-	time.Sleep(5 * time.Second)
-	if p := netbirdInstalledPath(); p != "" {
-		return p, nil
+	// Installer returns before files settle; poll for the executable up to 60s.
+	for i := 0; i < 30; i++ {
+		time.Sleep(2 * time.Second)
+		if p := netbirdInstalledPath(); p != "" {
+			time.Sleep(3 * time.Second) // let the netbird service come up
+			return p, nil
+		}
 	}
-	return "", fmt.Errorf("netbird installed but executable not found")
+	return "", fmt.Errorf("netbird installed but executable not found after wait (قد يحتاج إعادة تشغيل)")
 }
 
 // download fetches url into dst.

@@ -106,13 +106,21 @@ func (a *Agent) JoinNetbird() error {
 	if err != nil {
 		return fmt.Errorf("تعذّر تثبيت NetBird تلقائياً: %w", err)
 	}
+	// Ensure the NetBird background service is installed & running first.
+	_ = exec.Command(path, "service", "install").Run()
+	_ = exec.Command(path, "service", "start").Run()
+	time.Sleep(2 * time.Second)
+
 	args := []string{"up", "--setup-key", a.state.NetbirdKey}
 	if a.state.NetbirdAPIURL != "" {
 		args = append(args, "--management-url", a.state.NetbirdAPIURL)
 	}
 	out, err := exec.Command(path, args...).CombinedOutput()
 	log.Printf("netbird up: %s", string(out))
-	return err
+	if err != nil {
+		return fmt.Errorf("netbird up: %w (%s)", err, string(out))
+	}
+	return nil
 }
 
 // netbirdPeerIP returns this machine's NetBird IP via `netbird status`, or "".
