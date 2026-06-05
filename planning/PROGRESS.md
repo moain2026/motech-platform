@@ -92,3 +92,19 @@
 1. تنظيف: قتل كل عمليات motech القديمة + حذف العملاء التجريبيين (إبقاء عميل واحد نظيف).
 2. تثبيت نظيف واحد عبر motech-setup.exe بـ exe الجديد (commit 2c7ab14).
 3. تأكيد: schtasks Last Result=0، الـ PID يبقى حياً 2+ دقيقة، agent.log يُظهر loop مستمر، last_seen يتقدّم تلقائياً تحت SYSTEM.
+
+## 2026-06-05 (Session 2 — continued)
+
+### ✅ Persistence/SYSTEM SOLVED + 401 mystery cracked
+- النسخ المنشورة كانت قديمة (قبل إصلاح stdout) → أعدت بناء ونشر الـ3 exe.
+- نفّذت 3 تحسينات: (1) Scheduled Task XML مرن (RestartOnFailure PT1M×3, StartWhenAvailable, BootTrigger Delay PT1M, ExecutionTimeLimit PT0S, Hidden, IgnoreNew). (2) Single-Instance Mutex Global\MotechConnectAgent. (3) TokenManager thread-safe (TTL 30s) + reload-on-401 (retry مرة واحدة، skip لو التوكن ما تغيّر، 3×100ms file-lock retry) + 4 unit tests pass.
+- **السبب الجذري للـ401**: نسخة قديمة `C:\Users\moain\Downloads\mc.exe` كانت لا تزال شغّالة، تضرب نفس agent.log بتوكن عميل محذوف كل 20s. الوكيل الحقيقي كان سليماً طوال الوقت. قتلت+حذفت mc.exe → الـlog نظيف تماماً (401_count=0).
+- **تثبيت نظيف + مراقبة 5 دقائق نجحت**: PID واحد ثابت تحت SYSTEM، last_seen يتقدّم كل دقيقة، صفر أخطاء.
+
+### ✅ Private Key في Dashboard (مكتمل ومُختبَر live)
+- Backend Connection endpoint: يفك تشفير المفتاح الخاص (AES-256-GCM) + يرجّع key_file + أمر `ssh -i` كامل + بلوك "ready" جاهز للصق (حفظ المفتاح 0600 → ssh عبر NetBird).
+- Dashboard: زر "نسخ الاتصال" يفتح modal: NetBird IP + User + أمر SSH + Private Key + بلوك AI جاهز، كل واحد بزر نسخ + زر "نسخ الكل". كل نسخة تُسجَّل في Activity Log.
+- تحقق live بالمتصفح (Alpine via CDP + screenshot): يعمل بالكامل لـ MoTech-v2 (IP 100.95.193.14).
+
+### Commits
+2c7ab14, 98bde57, 7d29789, 0402a06, 86ed5d7
