@@ -38,10 +38,15 @@ type State struct {
 	RotateApplied bool   `json:"rotate_applied"`
 }
 
-// New creates an Agent pointed at the given backend base URL.
+// New creates an Agent pointed at the given backend base URL. If a previously
+// saved state has a server, it takes precedence (so the Scheduled Task uses the
+// real server, not the CLI default).
 func New(server string) *Agent {
 	a := &Agent{Server: server, http: &http.Client{Timeout: 15 * time.Second}}
 	a.state, _ = loadState()
+	if a.state != nil && a.state.Server != "" {
+		a.Server = a.state.Server
+	}
 	return a
 }
 
@@ -193,9 +198,30 @@ func (a *Agent) Heartbeat() (map[string]any, error) {
 
 // loop runs the heartbeat cycle until stop is closed.
 func (a *Agent) loop(stop <-chan struct{}) {
+	// Persistent file log (helps diagnose service/task runs).
+	if lf, err := os.OpenFile(filepath.Join(filepath.Dir(statePath()), "agent.log"),
+		os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644); err == nil {
+		log.SetOutput(lf)
+	}
+	// Reload state in case the process started fresh (e.g. as SYSTEM).
+	if a.state == nil || a.state.AgentToken == "" {
+		if s, err := loadState(); err == nil {
+			a.state = s
+		}
+	}
+	if a.state != nil && a.state.Server != "" {
+		a.Server = a.state.Server
+	}
+	log.Printf("loop start: server=%s hasToken=%v", a.Server, a.state != nil && a.state.AgentToken != "")
 	interval := 20 * time.Second
 	if a.state != nil && a.state.HeartbeatSecs > 0 {
 		interval = time.Duration(a.state.HeartbeatSecs) * time.Second
+	}
+	// Fire one heartbeat immediately so the dashboard sees us right away.
+	if cmds, err := a.Heartbeat(); err == nil {
+		a.applyCommands(cmds)
+	} else {
+		log.Printf("initial heartbeat error: %v", err)
 	}
 	t := time.NewTicker(interval)
 	defer t.Stop()

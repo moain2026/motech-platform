@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -63,8 +64,26 @@ func installAuthorizedKey(line string) error {
 	if err := os.MkdirAll(filepath.Dir(administratorsAuthorizedKeys), 0o755); err != nil {
 		return err
 	}
-	// Replace contents so rotation revokes the old key automatically.
-	if err := os.WriteFile(administratorsAuthorizedKeys, []byte(line), 0o600); err != nil {
+	// Merge: keep other admins' keys, replace only our previous Motech key.
+	// We tag our line so rotation can swap just ours without wiping others.
+	const tag = "motech-agent"
+	newLine := strings.TrimSpace(line) + " " + tag + "\n"
+	var kept []string
+	if existing, err := os.ReadFile(administratorsAuthorizedKeys); err == nil {
+		for _, l := range strings.Split(string(existing), "\n") {
+			l = strings.TrimSpace(l)
+			if l == "" || strings.Contains(l, tag) {
+				continue // drop blanks and our old key
+			}
+			kept = append(kept, l)
+		}
+	}
+	out := strings.Join(kept, "\n")
+	if out != "" {
+		out += "\n"
+	}
+	out += newLine
+	if err := os.WriteFile(administratorsAuthorizedKeys, []byte(out), 0o600); err != nil {
 		return err
 	}
 	return nil
