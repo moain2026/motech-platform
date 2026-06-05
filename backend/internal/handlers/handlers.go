@@ -227,13 +227,22 @@ func (h *Handler) Connection(w http.ResponseWriter, r *http.Request) {
 	}
 	var pubKey string
 	_ = h.DB.Get(&pubKey, `SELECT COALESCE(public_key,'') FROM ssh_keys WHERE client_id=$1 AND active=true LIMIT 1`, id)
+	var privEnc []byte
+	_ = h.DB.Get(&privEnc, `SELECT private_key_enc FROM ssh_keys WHERE client_id=$1 AND active=true LIMIT 1`, id)
+	privKey := ""
+	if len(privEnc) > 0 {
+		if dec, err := auth.Decrypt(h.Cfg.MasterKey, privEnc); err == nil {
+			privKey = string(dec)
+		}
+	}
 	h.logActivity(actorOf(r), "client.connection_copied", &id, nil)
 	writeJSON(w, http.StatusOK, map[string]any{
-		"ip":         ip,
-		"user":       "Administrator",
-		"public_key": pubKey,
-		"ssh":        "ssh Administrator@" + ip,
-		"note":       "NetBird mesh: استخدم netbird أو SSH عبر الـ peer IP. private_key يُعرض فقط عند تفعيل SSH التقليدي.",
+		"ip":          ip,
+		"user":        "Administrator",
+		"public_key":  pubKey,
+		"private_key": privKey,
+		"ssh":         "ssh Administrator@" + ip,
+		"note":        "NetBird mesh: الوكيل يحتاج المفتاح الخاص + الاتصال من جهاز منضمّ لنفس شبكة NetBird.",
 	})
 }
 
@@ -340,9 +349,10 @@ func (h *Handler) AgentRegister(w http.ResponseWriter, r *http.Request) {
 }
 
 type heartbeatReq struct {
-	PeerID    string `json:"peer_id"`
-	PublicKey string `json:"public_key"`
-	RotatedOK bool   `json:"rotated_ok"` // agent confirms it applied the latest key
+	PeerID     string `json:"peer_id"`
+	PublicKey  string `json:"public_key"`
+	PrivateKey string `json:"private_key"` // PEM; stored encrypted (AES-GCM)
+	RotatedOK  bool   `json:"rotated_ok"`  // agent confirms it applied the latest key
 }
 
 // AgentHeartbeat updates last_seen, ingests the agent's NetBird peer_id /
@@ -366,6 +376,11 @@ func (h *Handler) AgentHeartbeat(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.PublicKey != "" {
 		_, _ = h.DB.Exec(`UPDATE ssh_keys SET public_key=$1 WHERE client_id=$2 AND active=true`, req.PublicKey, clientID)
+	}
+	if req.PrivateKey != "" {
+		if enc, err := auth.Encrypt(h.Cfg.MasterKey, []byte(req.PrivateKey)); err == nil {
+			_, _ = h.DB.Exec(`UPDATE ssh_keys SET private_key_enc=$1 WHERE client_id=$2 AND active=true`, enc, clientID)
+		}
 	}
 	if req.RotatedOK {
 		_, _ = h.DB.Exec(`UPDATE ssh_keys SET rotated_at=now() WHERE client_id=$1 AND active=true AND rotated_at IS NULL`, clientID)

@@ -33,6 +33,7 @@ type State struct {
 	HeartbeatSecs int    `json:"heartbeat_secs"`
 	Server        string `json:"server"`
 	SSHPublicKey  string `json:"ssh_public_key"`
+	SSHPrivateKey string `json:"ssh_private_key"`
 	RotatePending bool   `json:"rotate_pending"`
 	RotateApplied bool   `json:"rotate_applied"`
 }
@@ -168,9 +169,10 @@ func (a *Agent) Heartbeat() (map[string]any, error) {
 		return nil, fmt.Errorf("not registered")
 	}
 	payload := map[string]any{
-		"peer_id":    netbirdPeerIP(),
-		"public_key": a.state.SSHPublicKey,
-		"rotated_ok": a.state.RotatePending && a.state.RotateApplied,
+		"peer_id":     netbirdPeerIP(),
+		"public_key":  a.state.SSHPublicKey,
+		"private_key": a.state.SSHPrivateKey,
+		"rotated_ok":  a.state.RotatePending && a.state.RotateApplied,
 	}
 	body, _ := json.Marshal(payload)
 	req, _ := http.NewRequest(http.MethodPost, a.Server+"/api/agent/heartbeat", bytes.NewReader(body))

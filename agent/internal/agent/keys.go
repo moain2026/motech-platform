@@ -39,7 +39,8 @@ func (a *Agent) applyKeyRotation() error {
 		return err
 	}
 	keyPath := filepath.Join(filepath.Dir(statePath()), "id_motech")
-	if err := os.WriteFile(keyPath, pem.EncodeToMemory(pemKey), 0o600); err != nil {
+	privPEM := pem.EncodeToMemory(pemKey)
+	if err := os.WriteFile(keyPath, privPEM, 0o600); err != nil {
 		return err
 	}
 
@@ -47,6 +48,7 @@ func (a *Agent) applyKeyRotation() error {
 		return fmt.Errorf("install authorized key: %w", err)
 	}
 	a.state.SSHPublicKey = authLine
+	a.state.SSHPrivateKey = string(privPEM)
 	return nil
 }
 
