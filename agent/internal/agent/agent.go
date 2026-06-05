@@ -198,10 +198,12 @@ func (a *Agent) Heartbeat() (map[string]any, error) {
 		return nil, fmt.Errorf("not registered")
 	}
 
-	out, status, err := a.sendHeartbeat(a.authToken())
+	tok := a.authToken()
+	out, status, err := a.sendHeartbeat(tok)
 	if err == nil {
 		return out, nil
 	}
+	logTokenEvent("hb", fmt.Sprintf("status=%d tokTail=%s err=%v", status, tail8(tok), err))
 	if status != http.StatusUnauthorized {
 		return nil, err // network or non-401 error: surface as-is
 	}
@@ -257,6 +259,14 @@ func (a *Agent) sendHeartbeat(token string) (map[string]any, int, error) {
 	return out, resp.StatusCode, json.NewDecoder(resp.Body).Decode(&out)
 }
 
+// tail8 returns the last 8 chars of s (for safe token identification in logs).
+func tail8(s string) string {
+	if len(s) <= 8 {
+		return s
+	}
+	return s[len(s)-8:]
+}
+
 // loop runs the heartbeat cycle until stop is closed.
 func (a *Agent) loop(stop <-chan struct{}) {
 	// Persistent file log (helps diagnose service/task runs).
@@ -273,7 +283,7 @@ func (a *Agent) loop(stop <-chan struct{}) {
 	if a.state != nil && a.state.Server != "" {
 		a.Server = a.state.Server
 	}
-	log.Printf("loop start: server=%s hasToken=%v", a.Server, a.state != nil && a.state.AgentToken != "")
+	log.Printf("loop start: server=%s hasToken=%v BUILD=tokenmgr-v3 tokTail=%s", a.Server, a.state != nil && a.state.AgentToken != "", tail8(a.authToken()))
 	interval := 20 * time.Second
 	if a.state != nil && a.state.HeartbeatSecs > 0 {
 		interval = time.Duration(a.state.HeartbeatSecs) * time.Second
