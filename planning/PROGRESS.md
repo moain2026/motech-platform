@@ -128,3 +128,20 @@
 
 ### Commits: 0c90bdb, 239e6a9, df19e3a (+ docs)
 ### ⏳ جاهز للاختبار على جهاز المستخدم: الـ3 كلها (exe موقّع منشور، تدوير، صفحة تثبيت)
+
+## 2026-06-05 (Session 2 — اختبار الثلاثة على جهاز المستخدم)
+
+### اختبار 1: توقيع الـ exe ✅ (وأصلحت bug حقيقي)
+- أول محاولة: ويندوز عرض Publisher=Al-Abbasi Soft لكن Status=UnknownError (شهادة self-signed بطبقة واحدة → "basic constraint extension has not been observed").
+- الإصلاح: بنية سلسلة صحيحة Root CA (CA:TRUE) → leaf code-signing (CA:FALSE). build.sh يضمّن السلسلة كاملة.
+- النتيجة على جهاز المستخدم بعد استيراد ca.crt لـ Trusted Root: **Status=Valid، "Signature verified"، Publisher=Al-Abbasi Soft** ✓. توزّع ca.crt عبر GPO على الفروع.
+
+### اختبار 2: تدوير المفاتيح ✅ (واكتشفت أن جهازه كان يشغّل نسخة قديمة)
+- أول تدوير فشل: جهازه كان على نسخة 13:42 (قبل إصلاح rotation) → النسخة القديمة ترسل rotated_ok=true دائماً → الـbackend أكّد فوراً وخزّن المفتاح القديم كـ"جديد"، المفتاح ما تغيّر فعلياً.
+- نشرت النسخة الجديدة (الموقّعة + rotation الصحيح) على جهازه، أعدت التدوير: **المفتاح تغيّر فعلاً** (AQ7QVTTiDwyl → inXe5UgVX534) في authorized_keys + agent.json، rotate_confirm_pending=False ✓.
+
+### اختبار 3: صفحة التثبيت /setup/{token} ✅
+- على جهازه: الصفحة تفتح (200، تعرض اسم الجهاز + الرمز + زر التحميل)، تحميل الـexe الموقّع (sig=Valid)، التسجيل بالرمز → registered → NetBird → task → online.
+- الدورة الكاملة من رابط واحد → online نجحت. نظّفت العميل القديم (عميل واحد نظيف: MoTech-setup-e2e online).
+
+### Commits: c6a5cf5 (signing chain fix) + سابقاتها
