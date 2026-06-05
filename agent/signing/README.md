@@ -4,11 +4,15 @@
 نوقّع الـ `.exe` بتوقيع Authenticode عشان ويندوز يعرض الناشر **Al-Abbasi Soft**
 بدل **Unknown Publisher**، وعشان نمنع تعديل الملف بعد البناء.
 
-## الملفات
-- `motech-codesign.crt` — الشهادة العامة (self-signed، صالحة 10 سنوات). **تُحفظ في git**.
-- `motech-codesign.key` — المفتاح الخاص. **gitignored — لا يُرفع أبداً**.
-- `cert.pfx` — (اختياري) شهادة CA حقيقية (OV/EV). لو وُجدت يستخدمها `build.sh` تلقائياً
-  مع `MOTECH_PFX_PASS`. **gitignored**.
+## الملفات (بنية سلسلة من طبقتين — الصحيحة)
+- `ca.crt` — **Root CA** (CA:TRUE). هذي اللي تُوزَّع على الأجهزة لتثق بالتوقيع. **في git**.
+- `ca.key` — مفتاح الـ Root CA الخاص. **gitignored — لا يُرفع أبداً**.
+- `motech-codesign.crt` — شهادة التوقيع (leaf, CA:FALSE, codeSigning) موقّعة من الـ CA. **في git**.
+- `motech-codesign.key` — مفتاح التوقيع الخاص. **gitignored**.
+- `motech-codesign-chain.crt` — leaf + ca مجمّعة (build.sh يضمّن السلسلة كاملة). **في git**.
+- `cert.pfx` — (اختياري) شهادة CA حقيقية (OV/EV) تأخذ الأولوية مع `MOTECH_PFX_PASS`. **gitignored**.
+
+> **مهم**: توقيع self-signed بطبقة واحدة يفشل برسالة "basic constraint extension has not been observed". الحل الصحيح (المطبّق) = Root CA منفصل يوقّع leaf. مُثبَت live: بعد استيراد ca.crt → Status=Valid "Signature verified".
 
 ## مستويات الثقة
 | التوقيع | النتيجة على ويندوز |
@@ -18,13 +22,13 @@
 | **OV cert (CA)** | لا "Unknown Publisher"؛ SmartScreen يهدأ بعد بناء سمعة. ~200-400$/سنة. |
 | **EV cert (CA)** | ثقة فورية بلا انتظار سمعة. أغلى + يحتاج HSM/USB token. |
 
-## التوزيع على الفروع (لإزالة التحذير مع self-signed)
-على أجهزة العملاء (أو عبر Group Policy):
+## التوزيع على الفروع (لإزالة التحذير)
+وزّع **ca.crt** (الـ Root CA) مرة واحدة (أو عبر Group Policy):
 ```powershell
-Import-Certificate -FilePath motech-codesign.crt -CertStoreLocation Cert:\LocalMachine\Root
-Import-Certificate -FilePath motech-codesign.crt -CertStoreLocation Cert:\LocalMachine\TrustedPublisher
+Import-Certificate -FilePath ca.crt -CertStoreLocation Cert:\LocalMachine\Root
+Import-Certificate -FilePath ca.crt -CertStoreLocation Cert:\LocalMachine\TrustedPublisher
 ```
-بعدها التطبيق الموقّع يُعتبر موثوقاً بالكامل على تلك الأجهزة.
+بعدها كل الـ exe الموقّعة تُعتبر موثوقة بالكامل (Status=Valid). **مُختبَر live ✓**.
 
 ## الترقية لشهادة CA لاحقاً
 1. اشترِ OV/EV code-signing cert (Sectigo / DigiCert / SSL.com…).

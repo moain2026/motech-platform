@@ -29,8 +29,11 @@ mkdir -p "$OUT"
 
 SIGNDIR="signing"
 CRT="$SIGNDIR/motech-codesign.crt"
+CHAIN="$SIGNDIR/motech-codesign-chain.crt"  # leaf + root (embed full chain)
 KEY="$SIGNDIR/motech-codesign.key"
 PFX="$SIGNDIR/cert.pfx"          # optional real CA cert (takes precedence)
+# prefer the full chain bundle when present so the signature validates to root
+[[ -f "$CHAIN" ]] && CRT="$CHAIN"
 TS_URL="http://timestamp.digicert.com"
 
 echo "==> building windows binaries"

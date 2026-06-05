@@ -11,3 +11,4 @@ agent/motech-connect.exe
 # Code-signing private key (NEVER commit). Public cert + pfx handled per-policy.
 agent/signing/*.key
 agent/signing/cert.pfx
+agent/signing/ca.key
