@@ -31,6 +31,9 @@ type State struct {
 	NetbirdAPIURL string `json:"netbird_api_url"`
 	HeartbeatSecs int    `json:"heartbeat_secs"`
 	Server        string `json:"server"`
+	SSHPublicKey  string `json:"ssh_public_key"`
+	RotatePending bool   `json:"rotate_pending"`
+	RotateApplied bool   `json:"rotate_applied"`
 }
 
 // New creates an Agent pointed at the given backend base URL.
@@ -114,12 +117,39 @@ func (a *Agent) JoinNetbird() error {
 	return err
 }
 
-// Heartbeat sends one heartbeat and returns the pending-commands response.
+// netbirdPeerIP returns this machine's NetBird IP via `netbird status`, or "".
+func netbirdPeerIP() string {
+	p, err := exec.LookPath("netbird")
+	if err != nil {
+		return ""
+	}
+	out, err := exec.Command(p, "status", "--json").Output()
+	if err != nil {
+		return ""
+	}
+	var st struct {
+		NetbirdIP string `json:"netbirdIp"`
+	}
+	if json.Unmarshal(out, &st) == nil {
+		return st.NetbirdIP
+	}
+	return ""
+}
+
+// Heartbeat sends one heartbeat (reporting peer_id + public key) and returns
+// the pending-commands response.
 func (a *Agent) Heartbeat() (map[string]any, error) {
 	if a.state == nil || a.state.AgentToken == "" {
 		return nil, fmt.Errorf("not registered")
 	}
-	req, _ := http.NewRequest(http.MethodPost, a.Server+"/api/agent/heartbeat", nil)
+	payload := map[string]any{
+		"peer_id":    netbirdPeerIP(),
+		"public_key": a.state.SSHPublicKey,
+		"rotated_ok": a.state.RotatePending && a.state.RotateApplied,
+	}
+	body, _ := json.Marshal(payload)
+	req, _ := http.NewRequest(http.MethodPost, a.Server+"/api/agent/heartbeat", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+a.state.AgentToken)
 	resp, err := a.http.Do(req)
 	if err != nil {
@@ -167,8 +197,14 @@ func (a *Agent) applyCommands(cmds map[string]any) {
 		return
 	}
 	if b, _ := cmds["rotate"].(bool); b {
-		log.Println("server requests key rotation — applying (placeholder)")
-		// Phase 3.1: fetch new key/material and update local SSH config.
+		log.Println("server requests key rotation — applying")
+		if err := a.applyKeyRotation(); err != nil {
+			log.Printf("rotation failed: %v", err)
+			return
+		}
+		a.state.RotatePending = true
+		a.state.RotateApplied = true
+		_ = a.state.save()
 	}
 }
 

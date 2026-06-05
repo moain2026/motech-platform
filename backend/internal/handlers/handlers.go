@@ -222,23 +222,27 @@ func (h *Handler) Connection(w http.ResponseWriter, r *http.Request) {
 	var nb models.NetbirdLink
 	_ = h.DB.Get(&nb, `SELECT * FROM netbird_links WHERE client_id=$1`, id)
 	ip := "<netbird-ip-pending>"
-	if nb.PeerID != nil {
+	if nb.PeerID != nil && *nb.PeerID != "" {
 		ip = *nb.PeerID
 	}
+	var pubKey string
+	_ = h.DB.Get(&pubKey, `SELECT COALESCE(public_key,'') FROM ssh_keys WHERE client_id=$1 AND active=true LIMIT 1`, id)
 	h.logActivity(actorOf(r), "client.connection_copied", &id, nil)
 	writeJSON(w, http.StatusOK, map[string]any{
-		"ip":   ip,
-		"user": "Administrator",
-		"note": "private_key يُعرض هنا فقط عند تفعيل SSH التقليدي.",
+		"ip":         ip,
+		"user":       "Administrator",
+		"public_key": pubKey,
+		"ssh":        "ssh Administrator@" + ip,
+		"note":       "NetBird mesh: استخدم netbird أو SSH عبر الـ peer IP. private_key يُعرض فقط عند تفعيل SSH التقليدي.",
 	})
 }
 
-// RotateKey marks a client for SSH key rotation on next heartbeat.
+// RotateKey deactivates the current key and creates a new pending one. The
+// agent will detect rotate=true on its next heartbeat and apply it.
 func (h *Handler) RotateKey(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	res, _ := h.DB.Exec(`UPDATE ssh_keys SET active=false WHERE client_id=$1`, id)
-	_, _ = h.DB.Exec(`INSERT INTO ssh_keys (client_id, active) VALUES ($1,true)`, id)
-	_ = res
+	_, _ = h.DB.Exec(`UPDATE ssh_keys SET active=false WHERE client_id=$1`, id)
+	_, _ = h.DB.Exec(`INSERT INTO ssh_keys (client_id, active, rotated_at) VALUES ($1,true,NULL)`, id)
 	h.logActivity(actorOf(r), "client.rotate_key", &id, nil)
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "pending_rotation": true})
 }
@@ -339,7 +343,14 @@ func (h *Handler) AgentRegister(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// AgentHeartbeat updates last_seen and returns any pending commands.
+type heartbeatReq struct {
+	PeerID    string `json:"peer_id"`
+	PublicKey string `json:"public_key"`
+	RotatedOK bool   `json:"rotated_ok"` // agent confirms it applied the latest key
+}
+
+// AgentHeartbeat updates last_seen, ingests the agent's NetBird peer_id /
+// SSH public key, and returns any pending commands (disable / rotate).
 func (h *Handler) AgentHeartbeat(w http.ResponseWriter, r *http.Request) {
 	clientID, _ := r.Context().Value(auth.CtxSubject).(string)
 	var status string
@@ -348,13 +359,30 @@ func (h *Handler) AgentHeartbeat(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusUnauthorized, "unknown client")
 		return
 	}
+
+	// Optional body: the agent reports its NetBird peer_id and SSH public key.
+	var req heartbeatReq
+	if r.Body != nil {
+		_ = json.NewDecoder(r.Body).Decode(&req)
+	}
+	if req.PeerID != "" {
+		_, _ = h.DB.Exec(`UPDATE netbird_links SET peer_id=$1 WHERE client_id=$2`, req.PeerID, clientID)
+	}
+	if req.PublicKey != "" {
+		_, _ = h.DB.Exec(`UPDATE ssh_keys SET public_key=$1 WHERE client_id=$2 AND active=true`, req.PublicKey, clientID)
+	}
+	if req.RotatedOK {
+		_, _ = h.DB.Exec(`UPDATE ssh_keys SET rotated_at=now() WHERE client_id=$1 AND active=true AND rotated_at IS NULL`, clientID)
+		h.logActivity("agent", "agent.rotated_applied", &clientID, nil)
+	}
+
 	if status != "disabled" {
 		_, _ = h.DB.Exec(`UPDATE clients SET last_seen=now(), status='online', updated_at=now() WHERE id=$1`, clientID)
 	}
-	// pending rotation = there exists an inactive key newer logic; simplified flag:
+	// pending rotation = active key not yet confirmed applied by the agent
 	var pendingRotate bool
 	_ = h.DB.Get(&pendingRotate,
-		`SELECT EXISTS(SELECT 1 FROM ssh_keys WHERE client_id=$1 AND active=true AND rotated_at IS NULL AND created_at > now() - interval '5 minutes')`,
+		`SELECT EXISTS(SELECT 1 FROM ssh_keys WHERE client_id=$1 AND active=true AND rotated_at IS NULL)`,
 		clientID)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"disabled": status == "disabled",
