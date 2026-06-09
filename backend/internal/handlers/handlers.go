@@ -55,6 +55,29 @@ func randToken() (plain, hash string) {
 	return formatted, hex.EncodeToString(sum[:])
 }
 
+// offlineThreshold: an agent sends a heartbeat every ~20s. If we haven't heard
+// from it within this window (3 missed heartbeats), we treat it as offline at
+// read time. The stored status is left as-is; this only affects what the API
+// reports, so a stopped/crashed agent no longer appears "online" forever.
+const offlineThreshold = 60 * time.Second
+
+// effectiveStatus derives the live status from the stored status + last_seen.
+// Terminal/manual states (pending, disabled) are returned unchanged. An
+// "online" client whose last heartbeat is older than offlineThreshold is
+// reported as "offline".
+func effectiveStatus(stored string, lastSeen *time.Time) string {
+	if stored == "disabled" || stored == "pending" {
+		return stored
+	}
+	if lastSeen == nil {
+		return "offline"
+	}
+	if time.Since(*lastSeen) > offlineThreshold {
+		return "offline"
+	}
+	return "online"
+}
+
 func hashToken(t string) string {
 	sum := sha256.Sum256([]byte(t))
 	return hex.EncodeToString(sum[:])
@@ -210,6 +233,9 @@ func (h *Handler) ListClients(w http.ResponseWriter, r *http.Request) {
 	if cs == nil {
 		cs = []models.Client{}
 	}
+	for i := range cs {
+		cs[i].Status = effectiveStatus(cs[i].Status, cs[i].LastSeen)
+	}
 	writeJSON(w, http.StatusOK, cs)
 }
 
@@ -310,6 +336,7 @@ func (h *Handler) GetClient(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusNotFound, "not found")
 		return
 	}
+	c.Status = effectiveStatus(c.Status, c.LastSeen)
 	writeJSON(w, http.StatusOK, c)
 }
 

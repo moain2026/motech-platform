@@ -21,3 +21,7 @@
 
 ---
 _أضف دروساً جديدة أعلى كل قسم. حافظ على الإيجاز._
+
+## الحالة (online/offline) — أُصلح 2026-06-09
+- `[2026-06-09]` الحالة كانت تُخزَّن كنص ثابت ولا تنتهي → عميل متوقّف يبقى "online" للأبد. **الإصلاح:** دالة `effectiveStatus(stored, last_seen)` تُحسب وقت العرض (ListClients/GetClient)، عتبة `offlineThreshold=60s` (3 heartbeats مفقودة). pending/disabled لا تتأثر.
+- `[2026-06-09]` اختبار E2E على لينكس: ممكن بناء الـ agent لـ linux (`go build ./cmd/agent`) وتشغيله على هذا الـ VM (NetBird متصل أصلاً) — register + heartbeat + rotate حقيقية. تثبيت المفاتيح/الخدمة = no-op على لينكس (آمن). agent.json يُحفظ في مسار ويندوز ثابت حتى على لينكس (hardcoded).
