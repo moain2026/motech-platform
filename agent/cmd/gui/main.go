@@ -8,6 +8,8 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"os"
 	"strings"
 
 	"github.com/lxn/walk"
@@ -20,6 +22,35 @@ import (
 const defaultServer = "https://qfetmfdn.gensparkclaw.com"
 
 func main() {
+	// HEADLESS MODE: the scheduled task / service runs this same exe with the
+	// `run` argument to keep the heartbeat loop alive in the background (no GUI
+	// window). Without this, the task would try to open a GUI in Session 0 and
+	// the heartbeat would never run — making the dashboard show the client as
+	// offline even though NetBird SSH works. Handle run/register before any GUI.
+	if len(os.Args) >= 2 {
+		switch os.Args[1] {
+		case "run":
+			ag := agent.New(envOr("MOTECH_SERVER", defaultServer))
+			defer func() { _ = recover() }()
+			if err := ag.RunService(); err != nil {
+				log.Printf("run: %v", err)
+			}
+			return
+		case "register":
+			tok := ""
+			if len(os.Args) >= 3 {
+				tok = os.Args[2]
+			}
+			ag := agent.New(envOr("MOTECH_SERVER", defaultServer))
+			if err := ag.Register(tok); err == nil {
+				_ = ag.JoinNetbird()
+				_ = ag.SetupAccess()
+				_ = ag.InstallService()
+				_, _ = ag.Heartbeat()
+			}
+			return
+		}
+	}
 	var mw *walk.MainWindow
 	var tokenEdit *walk.LineEdit
 	var serverEdit *walk.LineEdit
@@ -122,4 +153,12 @@ func main() {
 	}).Run(); err != nil {
 		fmt.Println("gui error:", err)
 	}
+}
+
+// envOr returns the env var value or a fallback default.
+func envOr(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
 }
