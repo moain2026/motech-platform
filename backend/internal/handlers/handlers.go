@@ -425,6 +425,23 @@ func (h *Handler) Connection(w http.ResponseWriter, r *http.Request) {
 	// netbird ssh = the reliable path. One line an AI agent can run as-is.
 	nbssh := "netbird ssh --strict-host-key-checking=false --user " + user + " " + ip
 
+	// A complete, paste-ready prompt for ANY AI agent: instructions + how to
+	// connect + the exact command. The user copies this and the agent connects
+	// immediately with no extra typing.
+	agentPrompt := strings.Join([]string{
+		"أنت وكيل تقني. عندك جهاز ويندوز عميل (" + c.Name + ") توصله عبر شبكة NetBird الآمنة.",
+		"للاتصال وتنفيذ أي أمر (PowerShell) على الجهاز، استخدم:",
+		"",
+		nbssh + " '<powershell-command>'",
+		"",
+		"قواعد مهمة:",
+		"- الـ shell هو PowerShell: افصل الأوامر بـ ; (ليس &).",
+		"- لو ظهر 'privileged user access disabled' جرّب مستخدمًا غير مميّز.",
+		"- نفّذ المهمة المطلوبة، تحقّق من النتيجة، وبلّغ بإيجاز.",
+		"",
+		"الجهاز: " + c.Name + " | المستخدم: " + user + " | NetBird IP: " + ip,
+	}, "\n")
+
 	// A single copy-paste block. Primary: netbird ssh. Fallback: OpenSSH+key.
 	ready := strings.Join([]string{
 		"# === الطريقة الموصى بها: NetBird SSH المدمج (بلا مفتاح) ===",
@@ -444,9 +461,10 @@ func (h *Handler) Connection(w http.ResponseWriter, r *http.Request) {
 		"public_key":   pubKey,
 		"private_key":  privKey,
 		"key_file":     keyFile,
-		"netbird_ssh":  nbssh,
-		"ssh":          "ssh -i " + keyFile + " " + user + "@" + ip,
-		"ready":        ready,
+		"netbird_ssh":   nbssh,
+		"agent_prompt":  agentPrompt,
+		"ssh":           "ssh -i " + keyFile + " " + user + "@" + ip,
+		"ready":         ready,
 		"note":         "الأساس: NetBird SSH المدمج (machine-identity، بلا مفتاح). يتطلب تفعيل ssh_enabled للجهاز + الاتصال من جهاز منضمّ لنفس شبكة NetBird.",
 	})
 }
@@ -670,6 +688,17 @@ func (h *Handler) AgentHeartbeat(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.PeerID != "" {
 		_, _ = h.DB.Exec(`UPDATE netbird_links SET peer_id=$1 WHERE client_id=$2`, req.PeerID, clientID)
+		// Auto-enable NetBird built-in SSH for this peer ONCE (zero manual steps).
+		// Guarded by the ssh_enabled flag so we call the NetBird API only the first
+		// time we learn the peer IP, not on every heartbeat.
+		var alreadyEnabled bool
+		_ = h.DB.Get(&alreadyEnabled, `SELECT COALESCE(ssh_enabled,false) FROM netbird_links WHERE client_id=$1`, clientID)
+		if !alreadyEnabled {
+			if err := h.NB.EnableSSH(req.PeerID); err == nil {
+				_, _ = h.DB.Exec(`UPDATE netbird_links SET ssh_enabled=true WHERE client_id=$1`, clientID)
+				h.logActivity("system", "netbird.ssh_enabled", &clientID, nil)
+			}
+		}
 	}
 	if req.LoginUser != "" {
 		_, _ = h.DB.Exec(`UPDATE clients SET login_user=$1 WHERE id=$2`, req.LoginUser, clientID)

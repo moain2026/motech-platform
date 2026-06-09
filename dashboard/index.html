@@ -381,7 +381,9 @@
           <div class="flex items-center justify-between mb-1"><span class="text-xs font-bold text-accent-600">⚡ بلوك جاهز للصق في وكيل AI</span><button @click="copy(conn.ready)" class="text-xs text-accent-600 font-bold">نسخ الكل</button></div>
           <pre class="font-mono text-[10px] leading-tight text-slate-600 dark:text-slate-300 max-h-32 overflow-y-auto whitespace-pre-wrap break-all" x-text="conn.ready"></pre>
         </div>
-        <button @click="copy(conn.ready)" class="w-full bg-accent-600 hover:bg-accent-500 text-white py-3 rounded-xl font-bold transition">📋 نسخ البلوك الجاهز للاتصال</button>
+        <!-- زر النسخ للوكيل: برومبت كامل + معلومات الاتصال جاهز للصق مباشرة -->
+        <button @click="copy(conn.agent_prompt || conn.ready)" class="w-full bg-accent-600 hover:bg-accent-500 text-white py-3.5 rounded-xl font-bold text-base transition shadow-lg">🤖 نسخ للوكيل (برومبت + اتصال جاهز)</button>
+        <button @click="copy(conn.ready)" class="w-full mt-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 py-2.5 rounded-xl font-bold text-sm transition">📋 نسخ أوامر الاتصال فقط</button>
         <button @click="conn=null" class="w-full border border-slate-200 dark:border-slate-700 py-2.5 rounded-xl">إغلاق</button>
       </div>
     </template>

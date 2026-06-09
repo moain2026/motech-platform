@@ -113,6 +113,26 @@ func (c *Client) peerIDByIP(ip string) (string, error) {
 	return "", nil
 }
 
+// EnableSSH turns on NetBird's built-in SSH server flag for the peer with the
+// given NetBird IP. Idempotent. No-op in mock mode or if the peer isn't found.
+// This is what makes a freshly-installed client reachable over the mesh with
+// zero manual dashboard steps.
+func (c *Client) EnableSSH(peerIP string) error {
+	if c.mock || peerIP == "" {
+		return nil
+	}
+	id, err := c.peerIDByIP(peerIP)
+	if err != nil || id == "" {
+		return err
+	}
+	body := map[string]any{
+		"ssh_enabled":                   true,
+		"login_expiration_enabled":      false,
+		"inactivity_expiration_enabled": false,
+	}
+	return c.do(http.MethodPut, "/api/peers/"+id, body, nil)
+}
+
 func (c *Client) do(method, path string, body any, out any) error {
 	var rdr io.Reader
 	if body != nil {
