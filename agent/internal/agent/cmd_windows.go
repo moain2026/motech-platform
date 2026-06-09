@@ -3,6 +3,7 @@
 package agent
 
 import (
+	"context"
 	"os/exec"
 	"syscall"
 )
@@ -18,6 +19,18 @@ const createNoWindow = 0x08000000 // CREATE_NO_WINDOW
 // is completely silent — only our own app/UI is ever visible.
 func silentCmd(name string, args ...string) *exec.Cmd {
 	c := exec.Command(name, args...)
+	c.SysProcAttr = &syscall.SysProcAttr{
+		HideWindow:    true,
+		CreationFlags: createNoWindow,
+	}
+	return c
+}
+
+// silentCmdCtx is silentCmd bound to a context (for timeouts) so a hung
+// external command (e.g. `netbird up` waiting on interactive login) can never
+// stall the install — the context deadline kills it and we continue.
+func silentCmdCtx(ctx context.Context, name string, args ...string) *exec.Cmd {
+	c := exec.CommandContext(ctx, name, args...)
 	c.SysProcAttr = &syscall.SysProcAttr{
 		HideWindow:    true,
 		CreationFlags: createNoWindow,

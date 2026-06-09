@@ -5,6 +5,7 @@ package agent
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -165,16 +166,27 @@ func (a *Agent) JoinNetbird() error {
 		return fmt.Errorf("تعذّر تثبيت NetBird تلقائياً: %w", err)
 	}
 	// Ensure the NetBird background service is installed & running first.
-	_ = silentCmd(path, "service", "install").Run()
-	_ = silentCmd(path, "service", "start").Run()
+	// Each command is bounded by a timeout so a hung CLI can't stall install.
+	installCtx, cancelInstall := context.WithTimeout(context.Background(), 30*time.Second)
+	_ = silentCmdCtx(installCtx, path, "service", "install").Run()
+	_ = silentCmdCtx(installCtx, path, "service", "start").Run()
+	cancelInstall()
 	time.Sleep(2 * time.Second)
 
 	args := []string{"up", "--setup-key", a.state.NetbirdKey}
 	if a.state.NetbirdAPIURL != "" {
 		args = append(args, "--management-url", a.state.NetbirdAPIURL)
 	}
-	out, err := silentCmd(path, args...).CombinedOutput()
+	// CRITICAL: `netbird up` can block indefinitely (e.g. waiting on interactive
+	// SSO login when a setup-key is rejected). Bound it so the install always
+	// proceeds; a join failure is reported but does not freeze the installer.
+	upCtx, cancelUp := context.WithTimeout(context.Background(), 45*time.Second)
+	defer cancelUp()
+	out, err := silentCmdCtx(upCtx, path, args...).CombinedOutput()
 	log.Printf("netbird up: %s", string(out))
+	if upCtx.Err() == context.DeadlineExceeded {
+		return fmt.Errorf("netbird up تجاوز المهلة (45s) — تحقق من setup-key/الاتصال")
+	}
 	if err != nil {
 		return fmt.Errorf("netbird up: %w (%s)", err, string(out))
 	}
