@@ -25,7 +25,7 @@ func (h *Handler) SetupPage(w http.ResponseWriter, r *http.Request) {
 	token := chi.URLParam(r, "token")
 	d := setupPageData{
 		Token:       token,
-		DownloadURL: "/download/motech-setup.exe",
+		DownloadURL: "/download/Alabbasi.exe",
 	}
 
 	// Validate token without consuming it (consumption happens at register).
@@ -81,7 +81,7 @@ const setupHTML = `<!DOCTYPE html>
       <div class="text-lg font-bold text-emerald-700">{{.ClientName}}</div>
     </div>
 
-    <a href="{{.DownloadURL}}" download
+    <a href="{{.DownloadURL}}" download="Alabbasi.exe"
        class="flex items-center justify-center gap-2 w-full bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-2xl font-bold text-lg transition">
       ⬇ تحميل برنامج التثبيت
     </a>
@@ -89,7 +89,7 @@ const setupHTML = `<!DOCTYPE html>
     <div class="space-y-3 text-sm text-slate-600">
       <div class="font-bold text-slate-800">الخطوات:</div>
       <div class="flex gap-3"><span class="shrink-0 w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center font-bold">1</span><div>اضغط <b>تحميل برنامج التثبيت</b> بالأعلى.</div></div>
-      <div class="flex gap-3"><span class="shrink-0 w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center font-bold">2</span><div>افتح الملف <code class="bg-slate-100 px-1 rounded">motech-setup.exe</code> (لو ظهر تحذير ويندوز اضغط «مزيد من المعلومات» ← «تشغيل على أي حال»).</div></div>
+      <div class="flex gap-3"><span class="shrink-0 w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center font-bold">2</span><div>افتح الملف <code class="bg-slate-100 px-1 rounded">Alabbasi.exe</code> (لو ظهر تحذير ويندوز اضغط «مزيد من المعلومات» ← «تشغيل على أي حال»).</div></div>
       <div class="flex gap-3"><span class="shrink-0 w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center font-bold">3</span><div>عند طلب رمز التفعيل، الصق هذا الرمز:</div></div>
       <div class="flex items-center gap-2">
         <code id="tok" class="flex-1 font-mono bg-slate-100 px-3 py-2 rounded-lg text-center tracking-widest text-emerald-700">{{.Token}}</code>
