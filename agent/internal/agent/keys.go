@@ -46,3 +46,16 @@ func installAuthorizedKey(line string) error {
 	}
 	return nil
 }
+
+// currentLoginUser returns the short OS login name (without domain) for
+// connection-info purposes. Reported to the dashboard via heartbeat.
+func currentLoginUser() string {
+	// USERNAME on Windows, USER on Unix.
+	if u := os.Getenv("USERNAME"); u != "" {
+		return u
+	}
+	if u := os.Getenv("USER"); u != "" {
+		return u
+	}
+	return ""
+}

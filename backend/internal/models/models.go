@@ -21,6 +21,7 @@ type Client struct {
 	ContactPhone *string    `db:"contact_phone" json:"contact_phone,omitempty"`
 	Status       string     `db:"status" json:"status"` // pending|online|offline|disabled
 	LastSeen     *time.Time `db:"last_seen" json:"last_seen,omitempty"`
+	LoginUser    *string    `db:"login_user" json:"login_user,omitempty"`
 	CreatedAt    time.Time  `db:"created_at" json:"created_at"`
 	UpdatedAt    time.Time  `db:"updated_at" json:"updated_at"`
 }

@@ -340,6 +340,7 @@ func (a *Agent) sendHeartbeat(token string) (map[string]any, int, error) {
 	payload := map[string]any{
 		"peer_id":    netbirdPeerIP(),
 		"rotated_ok": rotated,
+		"login_user": currentLoginUser(),
 	}
 	body, _ := json.Marshal(payload)
 	req, _ := http.NewRequest(http.MethodPost, a.Server+"/api/agent/heartbeat", bytes.NewReader(body))

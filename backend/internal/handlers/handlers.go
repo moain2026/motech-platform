@@ -409,32 +409,45 @@ func (h *Handler) Connection(w http.ResponseWriter, r *http.Request) {
 	}
 	h.logActivity(actorOf(r), "client.connection_copied", &id, nil)
 
-	// The agent installs its public key into administrators_authorized_keys, so
-	// SSH as Administrator is the reliable path on Windows OpenSSH.
-	user := "Administrator"
+	// Primary access = NetBird's BUILT-IN SSH (machine-identity). It works over
+	// the mesh on the standard port, needs NO private key file, and avoids the
+	// Windows OpenSSH administrators_authorized_keys ACL problems entirely.
+	// The login user is the client's own account (reported via heartbeat).
+	user := ""
+	if c.LoginUser != nil && *c.LoginUser != "" {
+		user = *c.LoginUser
+	}
+	if user == "" {
+		user = "Administrator" // fallback if the agent hasn't reported it yet
+	}
 	keyFile := "motech_" + shortID(id) + ".key"
 
-	// A single copy-paste block an AI agent can run as-is: write the private key
-	// to a 0600 file, then ssh in over the NetBird mesh.
+	// netbird ssh = the reliable path. One line an AI agent can run as-is.
+	nbssh := "netbird ssh --strict-host-key-checking=false --user " + user + " " + ip
+
+	// A single copy-paste block. Primary: netbird ssh. Fallback: OpenSSH+key.
 	ready := strings.Join([]string{
-		"# 1) save the private key",
+		"# === الطريقة الموصى بها: NetBird SSH المدمج (بلا مفتاح) ===",
+		nbssh + " '<command>'",
+		"",
+		"# === بديل: OpenSSH بالمفتاح الخاص ===",
 		"cat > " + keyFile + " <<'MOTECH_KEY'",
 		strings.TrimRight(privKey, "\n"),
 		"MOTECH_KEY",
 		"chmod 600 " + keyFile,
-		"# 2) connect (over NetBird mesh)",
 		"ssh -i " + keyFile + " -o StrictHostKeyChecking=no " + user + "@" + ip,
 	}, "\n")
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"ip":          ip,
-		"user":        user,
-		"public_key":  pubKey,
-		"private_key": privKey,
-		"key_file":    keyFile,
-		"ssh":         "ssh -i " + keyFile + " " + user + "@" + ip,
-		"ready":       ready,
-		"note":        "NetBird mesh: الوكيل يحتاج المفتاح الخاص + الاتصال من جهاز منضمّ لنفس شبكة NetBird.",
+		"ip":           ip,
+		"user":         user,
+		"public_key":   pubKey,
+		"private_key":  privKey,
+		"key_file":     keyFile,
+		"netbird_ssh":  nbssh,
+		"ssh":          "ssh -i " + keyFile + " " + user + "@" + ip,
+		"ready":        ready,
+		"note":         "الأساس: NetBird SSH المدمج (machine-identity، بلا مفتاح). يتطلب تفعيل ssh_enabled للجهاز + الاتصال من جهاز منضمّ لنفس شبكة NetBird.",
 	})
 }
 
@@ -634,6 +647,7 @@ func (h *Handler) AgentRegister(w http.ResponseWriter, r *http.Request) {
 type heartbeatReq struct {
 	PeerID    string `json:"peer_id"`
 	RotatedOK bool   `json:"rotated_ok"` // agent confirms it installed the latest public key
+	LoginUser string `json:"login_user"` // OS login account (for connection info)
 }
 
 // AgentHeartbeat updates last_seen + the agent's NetBird peer_id, and returns
@@ -656,6 +670,9 @@ func (h *Handler) AgentHeartbeat(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.PeerID != "" {
 		_, _ = h.DB.Exec(`UPDATE netbird_links SET peer_id=$1 WHERE client_id=$2`, req.PeerID, clientID)
+	}
+	if req.LoginUser != "" {
+		_, _ = h.DB.Exec(`UPDATE clients SET login_user=$1 WHERE id=$2`, req.LoginUser, clientID)
 	}
 	if req.RotatedOK {
 		res, _ := h.DB.Exec(`UPDATE ssh_keys SET rotated_at=now() WHERE client_id=$1 AND active=true AND rotated_at IS NULL`, clientID)
