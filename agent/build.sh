@@ -73,7 +73,7 @@ if [[ "$PUBLISH" == "1" ]]; then
   echo "==> publishing to $PUBDIR"
   sudo cp "$OUT"/motech-setup.exe "$OUT"/motech-connect.exe "$OUT"/motech-connect-cli.exe "$PUBDIR/"
   sudo chmod 755 "$PUBDIR"/*.exe
-  cp "$OUT/motech-connect.exe" "$OUT/Alabbasi.exe" 2>/dev/null || true
+  cp "$OUT/motech-connect.exe" "$OUT/Alabbasi_soft.exe" 2>/dev/null || true
   echo "published:"; ls -la "$PUBDIR"/*.exe
 fi
 echo "==> done"
