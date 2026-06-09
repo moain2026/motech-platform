@@ -29,3 +29,9 @@ _أضف دروساً جديدة أعلى كل قسم. حافظ على الإيج
 ## اختبار SSH حقيقي في بيئة الـVM — 2026-06-09
 - `[2026-06-09]` تأكيد E2E حقيقي للـ SSH على الـVM: مفتاح ولّده backend (فُكّ تشفيره من DB) → ركّبته في `~/.ssh/authorized_keys` → SSH نجح فعلياً. التدوير: المفتاح القديم → `Permission denied`، الجديد → نجح. (أثبت توليد المفتاح + التشفير/الفك + التدوير end-to-end).
 - `[2026-06-09]` تذبذب: SSH عبر NetBird self-IP (الـVM لنفسه) قد يعمل timeout أحياناً (self-routing). للاختبار المحلي استخدم 127.0.0.1 — نفس sshd ونفس منطق المفاتيح.
+
+## درس كبير من البحث العميق — 2026-06-09
+- `[2026-06-09]` **الـ exe لم يكن يكرش.** "لا مخرجات / exit 1" سببها بيئة الاختبار: bash→ssh→Cloudflare quick-tunnel→sshd-on-Windows(PowerShell default shell)→cmd /c. الحل: (1) DefaultShell=cmd.exe على ويندوز، (2) بيئة اختبار حقيقية (QEMU/Azure) بدل النفق. الكود متين.
+- `[2026-06-09]` Windows OpenSSH default shell = PowerShell منذ 2019 → يعيد تفسير الاقتباس مرتين. للأتمتة: اضبط DefaultShell=cmd عبر HKLM\SOFTWARE\OpenSSH.
+- `[2026-06-09]` لوميض النوافذ صفر: ابنِ نسخة الخدمة بـ `-H windowsgui` (مو بس CREATE_NO_WINDOW للأطفال). cmd/agent حالياً console subsystem.
+- `[2026-06-09]` ACL بالأسماء ('Administrators') يكسر على ويندوز غير الإنجليزي → استخدم SID (*S-1-5-32-544 / *S-1-5-18). حرج لقاعدة عملاء عربية.

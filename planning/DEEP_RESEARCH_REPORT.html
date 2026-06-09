@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<!-- saved from url=(0035)https://ecwiibmm.gensparkspace.com/ -->
+<html lang="ar" class="translated-rtl"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مراجعة معمقة للهندسة المعمارية والأمن - منصة الوصول عن بعد من موتك</title>
+    <meta name="description" content="A comprehensive engineering and security audit of the Motech remote access platform, covering silent installation on Windows, Session 0 isolation, SSH verification, and NetBird integration. This review provides a concrete roadmap for scaling from 3 to 1000 hosts, including fixing silent-spawn issues, hardening cryptographic hygiene, and aligning with NIST/SOC 2 standards.">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="Deep Architecture &amp; Security Review — Motech Remote Access Platform">
+    <meta property="og:description" content="A comprehensive engineering and security audit of the Motech remote access platform, covering silent installation on Windows, Session 0 isolation, SSH verification, and NetBird integration. This review provides a concrete roadmap for scaling from 3 to 1000 hosts, including fixing silent-spawn issues, hardening cryptographic hygiene, and aligning with NIST/SOC 2 standards.">
+    
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Deep Architecture &amp; Security Review — Motech Remote Access Platform">
+    <meta name="twitter:description" content="A comprehensive engineering and security audit of the Motech remote access platform, covering silent installation on Windows, Session 0 isolation, SSH verification, and NetBird integration. This review provides a concrete roadmap for scaling from 3 to 1000 hosts, including fixing silent-spawn issues, hardening cryptographic hygiene, and aligning with NIST/SOC 2 standards.">
+    
+
+    <!-- GitHub Markdown CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.1/github-markdown-light.min.css" integrity="sha512-zb2pp+R+czM7GAemdSUQt6jFmr3qCo6ikvBgVU6F5GvwEDR0C2sefFiPEJ9QUpmAKdD5EqDUdNRtbOYnbF/eyQ==" crossorigin="anonymous" referrerpolicy="no-referrer">
+
+    <!-- Code Highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" integrity="sha512-0aPQyyeZrWj9sCA46UlmWgKOP0mUipLQ6OZXu8l4IcAmD2u31EPEy9VcIMvl7SoAaKe8bLXZhYoMaE/in+gcgA==" crossorigin="anonymous" referrerpolicy="no-referrer">
+
+    <!-- Inline Styles -->
+    <style>
+        /* Reset and Base Styles */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: #24292f;
+    background: #ffffff;
+    padding: 20px;
+}
+
+/* Container */
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* Article Container */
+article.markdown-body {
+    padding: 40px 0;
+}
+
+/* Title Styles */
+.spark-title {
+    font-size: 2.5em;
+    font-weight: 700;
+    margin-bottom: 20px;
+    line-height: 1.2;
+    color: #1a1a1a;
+}
+
+/* Metadata */
+.spark-meta {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 0.9em;
+    color: #6b7280;
+}
+
+/* Content Area */
+.spark-content {
+    margin-bottom: 40px;
+}
+
+/* Gallery */
+.spark-gallery {
+    margin: 40px 0;
+    padding: 30px 0;
+    border-top: 1px solid #e5e7eb;
+}
+
+.spark-gallery h2 {
+    font-size: 1.5em;
+    margin-bottom: 20px;
+    color: #1a1a1a;
+}
+
+.gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.gallery-item {
+    position: relative;
+    overflow: hidden;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s;
+}
+
+.gallery-item:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.gallery-item img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    display: block;
+}
+
+/* References */
+.spark-references {
+    margin: 40px 0;
+    padding: 30px 0;
+    border-top: 1px solid #e5e7eb;
+}
+
+.spark-references h2 {
+    font-size: 1.5em;
+    margin-bottom: 20px;
+    color: #1a1a1a;
+}
+
+.spark-references ol {
+    padding-left: 20px;
+}
+
+.spark-references li {
+    margin-bottom: 10px;
+    line-height: 1.6;
+}
+
+.spark-references a {
+    color: #0969da;
+    text-decoration: none;
+}
+
+.spark-references a:hover {
+    text-decoration: underline;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+
+    .container {
+        padding: 0 10px;
+    }
+
+    .spark-title {
+        font-size: 1.8em;
+    }
+
+    .gallery-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Code Block Enhancement */
+.markdown-body pre {
+    border-radius: 6px;
+    padding: 16px;
+    overflow: auto;
+    font-size: 0.9em;
+    line-height: 1.45;
+}
+
+/* Link Styles */
+.markdown-body a {
+    color: #0969da;
+    text-decoration: none;
+}
+
+.markdown-body a:hover {
+    text-decoration: underline;
+}
+
+/* Image Styles */
+.markdown-body img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+    margin: 10px 0;
+}
+
+/* Table Styles */
+.markdown-body table {
+    width: 100%;
+    margin: 20px 0;
+    border-collapse: collapse;
+}
+
+.markdown-body th,
+.markdown-body td {
+    padding: 12px;
+    border: 1px solid #e5e7eb;
+    text-align: left;
+}
+
+.markdown-body th {
+    background-color: #f6f8fa;
+    font-weight: 600;
+}
+
+/* Blockquote Styles */
+.markdown-body blockquote {
+    margin: 20px 0;
+    padding: 10px 20px;
+    border-left: 4px solid #d0d7de;
+    background-color: #f6f8fa;
+    color: #57606a;
+}
+
+/* Paragraph Spacing - Enhanced for better readability */
+.markdown-body p {
+    margin-bottom: 20px;
+    margin-top: 0;
+}
+
+.markdown-body p:last-child {
+    margin-bottom: 0;
+}
+
+/* Heading Spacing - More space before and after headings */
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4,
+.markdown-body h5,
+.markdown-body h6 {
+    margin-top: 32px;
+    margin-bottom: 16px;
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+.markdown-body h1:first-child,
+.markdown-body h2:first-child,
+.markdown-body h3:first-child {
+    margin-top: 0;
+}
+
+/* List Spacing */
+.markdown-body ul,
+.markdown-body ol {
+    margin-bottom: 20px;
+    padding-left: 2em;
+}
+
+.markdown-body li {
+    margin-bottom: 8px;
+}
+
+.markdown-body li:last-child {
+    margin-bottom: 0;
+}
+
+    </style>
+<link type="text/css" rel="stylesheet" charset="UTF-8" href="./مراجعة معمقة للهندسة المعمارية والأمن - منصة الوصول عن بعد من موتك_files/m=el_main_css"></head>
+<body>
+    <div class="container">
+        <article class="markdown-body">
+            <!-- Title -->
+            <h1 class="spark-title"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">مراجعة معمقة للهندسة المعمارية والأمن - منصة الوصول عن بعد من موتك</font></font></h1>
+
+            <!-- Metadata (Optional) -->
+            
+            <div class="spark-meta">
+                <span class="spark-date"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">2026-06-09</font></font></span>
+                <span class="spark-lang"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">إنجليزي</font></font></span>
+            </div>
+            
+
+            <!-- Main Content (Rendered Markdown HTML) -->
+            <div class="spark-content">
+                <p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">لقد تم بأفكار ورؤى من </font></font><span><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">31 مصدرا</font></font></span></p>
+<h1></h1>
+<p><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">المستودع:</font></font></strong> <code>github.com/moain2026/motech-platform</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> · تم استنساخ الالتزام بتاريخ 2026-06-09 · حوالي 3150 سطرًا من التعليمات البرمجية بلغة Go (الخادم + الوكيل) + لوحة التحكم.
+ </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">النطاق:</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> صحة التثبيت الصامت، وتدفق التثبيت الذي لا يتوقف أبدًا، والتحقق من SSH، ولغز "عدم وجود مخرجات"، وتحسين التحكم في الوصول، واختيار اللغة، والتشغيل بدون واجهة رسومية + الجلسة 0، ومختبر اختبار Linux→Windows، ومراجعة كاملة للتعليمات البرمجية، وتحليل فجوات المعايير الدولية.</font></font></p>
+<hr>
+<h2><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">0. ملخص تنفيذي - أهم 5 أولويات</font></font></h2>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">بعد قراءة قاعدة الشفرة البرمجية كاملةً سطرًا بسطر، ومقارنتها بإرشادات مايكروسوفت الرسمية لـ OpenSSH، ووثائق واجهة سطر أوامر NetBird، وشفرة استدعاءات النظام بلغة Go، ووثائق SmartScreen / Trusted Signing، يتضح أن النظام </font></font><em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">مصمم هندسيًا بشكل ممتاز</font></font></em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> - ملف تنفيذي واحد بلغة Go، تشفير AES-256-GCM في حالة السكون، فصل رموز JWT بين المسؤول والوكيل، آلة حالة دوران متكررة مع اختبارات، ونموذج بقاء للمهام المجدولة مُحسَّن بشكل صحيح لمقاومة الأجهزة الميدانية المعادية. المشكلات التي واجهتها ليست معمارية، بل هي </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">مشاكل تكاملية</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> تتعلق بإنشاء العمليات الصامتة، والرجوع التفاعلي لواجهة سطر أوامر NetBird، وبروتوكول SSH، وبعض الثغرات في إجراءات التشفير والتشغيل.</font></font></p>
+<p><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">أهم 5 أشياء يجب إصلاحها هذا الأسبوع:</font></font></strong></p>
+<ol>
+<li><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">توقف عن تشغيل نظام ويندوز من خلال نفق سريع من Cloudflare مع اتصال متداخل </font></font><code>ssh → PowerShell → cmd /c</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">.</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> هذا ما تسبب في ظهور مشكلة "يبدو أن ملف exe يتعطل" - وليس الملف التنفيذي نفسه. أنشئ بيئة اختبار حقيقية لتحويل نظام لينكس إلى ويندوز (باستخدام QEMU/KVM أو Azure B2s مقابل 7 دولارات شهريًا). ستجد الوصفة الدقيقة في القسم (ج) أدناه.</font></font></li>
+<li><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">اجعل العملية </font></font><code>JoinNetbird</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">غير تفاعلية تمامًا ولا تعيق تسجيل الدخول الموحد عبر المتصفح.</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> أضف </font></font><code>--foreground-mode=false</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">دلالات: استخدم علامة الجمع </font></font><code>netbird service install</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">(+) </font></font><code>netbird service start</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">فقط، ومرّر مفتاح الإعداد عبر البرنامج الخفي. الوقت الحالي البالغ 45 ثانية </font></font><code>context.DeadlineExceeded</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">هو حل </font></font><em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">مؤقت للمشكلة</font></font></em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ، وليس حلاً جذريًا لها </font></font><code>agent/internal/agent/agent.go:183-188</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">.</font></font></li>
+<li><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">قم بتعزيز التوليد الصامت</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> عن طريق </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">تثبيت ملف GUI الثنائي دائمًا على</font></font><code>-H windowsgui</code></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> (أنت تفعل هذا لـ </font></font><code>cmd/gui</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">ولكن ليس لـ </font></font><code>cmd/agent</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">)، و NULL بشكل صريح </font></font><code>Stdin/Stdout/Stderr</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">على كل </font></font><code>silentCmd</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">بحيث لا يمكن أن يؤدي وراثة Session-0 للمقابض المعطلة إلى إتلاف العناصر الفرعية ( </font></font><code>cmd_windows.go:20-26</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">).</font></font></li>
+<li><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">تم تشديد</font></font><code>VerifySSHReady</code></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> إجراءات التحقق من الجاهزية إلى خمس نقاط: تشغيل خدمة SSH + وجود المفتاح + التحقق من تجزئة قائمة التحكم بالوصول + وجود قاعدة جدار الحماية + </font></font><code>127.0.0.1:22</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">فحص TCP حقيقي للحلقة الداخلية. حاليًا، يتم التحقق من نقطتين فقط من هذه النقاط الخمس </font></font><code>sshd_windows.go:43-65</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">.</font></font></li>
+<li><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">استبدل المفتاح الرئيسي المختصر باستخدام SHA-256 وسر JWT المفرد</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> باستخدام HS256 بمفاتيح مخصصة مشتقة من HKDF بالإضافة إلى </font></font><code>kid</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">رأس وفاصل تدوير المفاتيح. خوارزمية AES-GCM نفسها جيدة؛ </font><font dir="auto" style="vertical-align: inherit;">لكن </font></font><em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">اشتقاق المفتاح</font></font></em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> وسر </font></font><em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">JWT العالمي المفرد</font></font></em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> هما نقطة الضعف </font><font dir="auto" style="vertical-align: inherit;">.</font></font><code>backend/internal/auth/crypto.go:13-16</code><font dir="auto" style="vertical-align: inherit;"></font><code>auth.go:30,51</code><font dir="auto" style="vertical-align: inherit;"></font></li>
+</ol>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">ما هو قوي: آلة حالة الدوران، والقفل المتبادل العالمي ذو النسخة الواحدة ( </font></font><code>singleinstance_windows.go:17-46</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">)، </font></font><code>TokenManager.ForceReload</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">( </font></font><code>token.go:61-94</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">)، ومهمة XML المجدولة مع </font></font><code>BootTrigger+LogonTrigger+RestartOnFailure</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">( </font></font><code>task_windows.go:24-74</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">)، </font></font><code>setOutput(io.Discard)</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">وإعادة توجيه السجل الدفاعي ( </font></font><code>agent/cmd/agent/main.go:127-152</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">)، ونموذج المفتاح المملوك للخادم الخلفي (لا توجد مفاتيح خاصة على القرص على العميل) - هذه قرارات نموذجية.</font></font></p>
+<hr>
+<h2><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">1. تحديد السبب الجذري لكل مشكلة + حل ملموس</font></font></h2>
+<h3><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">المشكلة الأولى - التثبيت الصامت (بدون وميض ويندوز)</font></font></h3>
+<p><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">ما تفعله اليوم (أساس صحيح):</font></font></strong></p>
+<p><code>silentCmd</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يُفعّل هذا النمط كلاً من ` </font></font><code>HideWindow: true</code> <em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">and` و`</font></font></em> <code>CreationFlags: 0x08000000</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ) </font></font><code>CREATE_NO_WINDOW</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">` في كل عملية فرعية </font></font><code>agent/internal/agent/cmd_windows.go:20-27</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">. هذا هو نمط Go المتعارف عليه، والذي تم تأكيده من خلال مصدر استدعاءات النظام في Go والمشكلة المستمرة منذ فترة طويلة </font></font><code>golang/go#13754</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">(github.com </font></font><a href="https://github.com/golang/go/issues/13754"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">1</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ). مع ذلك، فإن استخدام `and` </font></font><code>HideWindow</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">وحده لن يمنع ظهور وحدة التحكم في عملية فرعية لنظام وحدة التحكم (PowerShell، netsh، schtasks)، وهو </font></font><code>CREATE_NO_WINDOW</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">في الواقع العلامة التي يعتمدها النواة (Stack Overflow </font></font><a href="https://stackoverflow.com/questions/42500570/how-to-hide-command-prompt-window-when-using-exec-in-golang"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">2</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ). إضافة `and` </font></font><code>-WindowStyle Hidden</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">إلى PowerShell، كما تفعل في ` </font></font><code>sshd_windows.go:18-32</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">&lt;script&gt;`، أمر صحيح ويزيل وميض WPF لجسم البرنامج النصي نفسه.</font></font></p>
+<p><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الفجوات الخفية التي وجدتها (ملف:سطر):</font></font></strong></p>
+<ol>
+<li>
+<p><strong><code>cmd/agent/main.go</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">هو ملف تنفيذي لنظام وحدة التحكم.</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> واجهة المستخدم الرسومية الخاصة بك </font></font><code>cmd/gui</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">مبنية باستخدام </font></font><code>-ldflags "-H windowsgui"</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">( </font></font><code>docs/AGENT.md</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">)، ولكنها </font></font><code>cmd/agent/main.go</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">ليست كذلك. إذا نقر المستخدم النهائي (وليس واجهة المستخدم الرسومية) نقرًا مزدوجًا </font></font><code>motech-connect.exe</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">أو تم تشغيله عبر مهمة مجدولة بتفسير خاطئ </font></font><code>Hidden=true</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">، فستظهر نافذة وحدة التحكم لفترة وجيزة قبل إنشاء أي عملية فرعية. هذه هي بالضبط أعراض "وميض وحدة التحكم" التي يراها المستخدمون حتى بعد إصلاحات Silent-Child. الحل: بناء واجهة سطر الأوامر للوكيل بطريقتين:</font></font></p>
+<pre><code class="language-bash"># silent service variant (no console at all, used by the scheduled task)<font></font>
+GOOS=windows GOARCH=amd64 go build -ldflags="-H windowsgui -s -w" -o motech-connect.exe ./cmd/agent<font></font>
+# CLI variant for ops/debug<font></font>
+GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o motech-connect-cli.exe ./cmd/agent<font></font>
+</code></pre>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">عندئذٍ، لا يمتلك البرنامج الرئيسي أي وحدة تحكم، </font></font><code>CREATE_NO_WINDOW</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">ويزيل </font></font><em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">جميع</font></font></em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> الومضات من البرامج الفرعية. لاحظ التحذير الوارد في StackOverflow: عندما يُنشئ برنامج رئيسي في Go يعتمد على واجهة المستخدم الرسومية برنامجًا فرعيًا، فإن البرنامج الفرعي </font></font><em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">لا يحصل على أي وحدة تحكم</font></font></em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> افتراضيًا - </font></font><code>CREATE_NO_WINDOW</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">وهذا يُعدّ إجراءً احترازيًا (stackoverflow.com </font></font><a href="https://stackoverflow.com/questions/42500570/how-to-hide-command-prompt-window-when-using-exec-in-golang"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">2</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ).</font></font></p>
+</li>
+<li>
+<p><strong><code>silentCmd</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">لا يُلغي هذا الإجراء معالجة مؤشرات Std.</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> في الجلسة 0 (سياق الخدمة)، يمكن أن تكون المؤشرات الموروثة فارغة </font></font><code>0xFFFFFFFF</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">، وأي عملية PowerShell فرعية تتعامل مع stderr قد تتسبب في حدوث خطأ فادح - وهي الآلية الموضحة في مدخلك </font></font><code>LEARNINGS.md</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">. </font></font><code>logToFile</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">لذا، عزز أمان النظام.</font></font></p>
+<pre><code class="language-go">func silentCmd(name string, args ...string) *exec.Cmd {<font></font>
+    c := exec.Command(name, args...)<font></font>
+    c.SysProcAttr = &amp;syscall.SysProcAttr{<font></font>
+        HideWindow:    true,<font></font>
+        CreationFlags: createNoWindow | 0x00000008, // DETACHED_PROCESS for true background<font></font>
+    }<font></font>
+    c.Stdin  = nil<font></font>
+    c.Stdout = io.Discard   // never inherit a broken Session-0 stdout<font></font>
+    c.Stderr = io.Discard   // ditto<font></font>
+    return c<font></font>
+}<font></font>
+</code></pre>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">بالنسبة للأوامر التي تتطلب إخراجًا ( </font></font><code>run()</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">في ملف </font></font><code>sshd_windows.go:79-82</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">)، استخدم مسارًا منفصلاً </font></font><code>silentCmdCapture</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يُوجّه إلى ملف الإخراج </font></font><code>bytes.Buffer</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">، ولا يرث أبدًا مؤشرات نظام التشغيل. </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">لا</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> تُعيّن كلا المسارين </font></font><code>CREATE_NO_WINDOW</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">للأوامر </font></font><code>DETACHED_PROCESS</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">التي تتطلب انتظارًا </font></font><code>.CombinedOutput()</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">، لأن هذا المزيج يُعطّل المسارات. استخدم </font></font><code>DETACHED_PROCESS</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">المسار فقط في حالات "التنفيذ والنسيان" (مثل إنهاء المهام اليتيمة، أو تشغيل المهام الفرعية).</font></font></p>
+</li>
+<li>
+<p><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">مُثبِّت NetBird.</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> استخداماتك </font><font dir="auto" style="vertical-align: inherit;">- هذا هو مفتاح NSIS الصامت وهو صحيح وفقًا لوثائق NetBird (docs.netbird.io </font><a href="https://docs.netbird.io/get-started/install/windows"><font dir="auto" style="vertical-align: inherit;">3</font></a><font dir="auto" style="vertical-align: inherit;"> ). لكن المُثبِّت نفسه يُشغِّل </font><em><font dir="auto" style="vertical-align: inherit;">واجهة مستخدم NetBird في شريط المهام</font></em><font dir="auto" style="vertical-align: inherit;"> افتراضيًا (يكتب إلى ). بالنسبة للخوادم/الأكشاك التي تعمل بدون واجهة رسومية </font></font><code>netbird_install.go:56</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">، </font><font dir="auto" style="vertical-align: inherit;">فأنت تريد </font><font dir="auto" style="vertical-align: inherit;">(إصدار MSI)، والذي تصفه نفس الوثائق صراحةً. انتقل من مُثبِّت EXE إلى MSI لعمليات نشر غير مراقبة بالكامل.</font></font><code>silentCmd(tmp, "/S")</code><font dir="auto" style="vertical-align: inherit;"></font><a href="https://docs.netbird.io/get-started/install/windows"><font dir="auto" style="vertical-align: inherit;"></font></a><font dir="auto" style="vertical-align: inherit;"></font><em><font dir="auto" style="vertical-align: inherit;"></font></em><font dir="auto" style="vertical-align: inherit;"></font><code>HKLM\…\Run</code><font dir="auto" style="vertical-align: inherit;"></font><code>msiexec /i netbird.msi /qn AUTOSTART=0</code><font dir="auto" style="vertical-align: inherit;"></font></p>
+</li>
+<li>
+<p><strong><code>installerScheduledTask</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يتم استدعاء هذه الوظيفة </font></font><code>schtasks /Run /TN</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">بشكل متزامن بعد إنشائها.</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> هذا </font></font><code>Run</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الاستدعاء نفسه هو وظيفة فرعية جديدة - وهو يخفيها بالفعل، لكن </font><em><font dir="auto" style="vertical-align: inherit;">هدف</font></em></font><code>silentCmd</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> المهمة </font><font dir="auto" style="vertical-align: inherit;">(وضع الوكيل </font><font dir="auto" style="vertical-align: inherit;">) يرث بيئة النظام </font><font dir="auto" style="vertical-align: inherit;">المحددة في ملف XML </font><font dir="auto" style="vertical-align: inherit;">. جيد. لكن </font><font dir="auto" style="vertical-align: inherit;">هذا يخفيها فقط من واجهة مستخدم جدولة المهام - فهو </font><strong><font dir="auto" style="vertical-align: inherit;">لا</font></strong><font dir="auto" style="vertical-align: inherit;"> يخفي نافذة وحدة التحكم الخاصة بالملف التنفيذي الذي تم تشغيله. هذا هو الغرض </font><font dir="auto" style="vertical-align: inherit;">من هذه الوظيفة. (هذه هي بالضبط الثغرة رقم 1 المذكورة أعلاه).</font></font><em><font dir="auto" style="vertical-align: inherit;"></font></em><font dir="auto" style="vertical-align: inherit;"></font><code>run</code><font dir="auto" style="vertical-align: inherit;"></font><code>Hidden=true</code><font dir="auto" style="vertical-align: inherit;"></font><code>task_windows.go:54</code><font dir="auto" style="vertical-align: inherit;"></font><code>&lt;Hidden&gt;true&lt;/Hidden&gt;</code><font dir="auto" style="vertical-align: inherit;"></font><strong><font dir="auto" style="vertical-align: inherit;"></font></strong><font dir="auto" style="vertical-align: inherit;"></font><code>-H windowsgui</code><font dir="auto" style="vertical-align: inherit;"></font></p>
+</li>
+</ol>
+<p><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الخلاصة:</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> استراتيجيتك الصامتة صحيحة بنسبة 80%. أما النسبة المتبقية البالغة 20% (النظام الفرعي للنظام الرئيسي، ومعالجة القيم الفارغة، وMSI لـ NetBird) فتغلق جميع مسارات التسريب المعروفة.</font></font></p>
+<hr>
+<h3><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">المشكلة الثانية - التثبيت المتسلسل الذي لا يتوقف أبدًا ( </font></font><code>netbird up</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يعلق)</font></font></h3>
+<p><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">أكد فريق تطوير NetBird السبب الجذري:</font></font></strong> <code>netbird up</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> يعود النظام إلى تسجيل الدخول الموحد التفاعلي عند رفض مسار مفتاح الإعداد (غير صالح، منتهي الصلاحية، عنوان URL إداري خاطئ)، ويفتح البرنامج متصفحًا لبدء عملية OAuth. </font></font><em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">لا يوجد </font></font><code>--no-browser</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">خيار لتفعيل هذه</font></font><code>netbird up</code></em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> الميزة - وهو طلب مفتوح منذ عام 2025 (مشكلة GitHub رقم 3608 </font></font><a href="https://github.com/netbirdio/netbird/issues/3608"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">4</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ). تؤكد صفحة استكشاف الأخطاء وإصلاحها في NetBird هذا الخطأ: جهاز سبق تسجيل دخوله عبر تسجيل الدخول الموحد، ثم يحاول استخدام مفتاح الإعداد، أو العكس، ينتهي به الأمر "بمحاولة فتح نافذة متصفح تفاعلية للمصادقة عبر تسجيل الدخول الموحد، ويفشل" (NetBird </font></font><a href="https://docs.netbird.io/help/troubleshooting-client"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">5</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ).</font></font></p>
+<p><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">إن مهلة السياق البالغة 45 ثانية</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> تعالج </font></font><code>agent/internal/agent/agent.go:183-189</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">العرض: إذ يعيد التثبيت التحكم، لكن الجهاز لا يزال غير متصل بشكل كامل. هذا هو الإجراء الدفاعي الصحيح، لكنه ليس النهج </font></font><em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الأساسي</font></font></em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> الأمثل .</font></font></p>
+<p><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">النهج الصحيح - تم إثباته من خلال مراجعة وثائق NetBird نفسها:</font></font></strong></p>
+<ol>
+<li><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">قم بتثبيت NetBird كخدمة </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">أولاً</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> (تم ذلك بالفعل): </font></font><code>netbird service install</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">+ </font></font><code>netbird service start</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">( </font></font><code>agent.go:171-172</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">). هذا هو التسلسل المتعارف عليه وفقًا لوثائق واجهة سطر الأوامر لـ NetBird </font></font><a href="https://docs.netbird.io/get-started/cli"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">6</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> .</font></font></li>
+<li><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">تواصل مع البرنامج الخفي عبر مقبس الإدارة المحلي </font><font dir="auto" style="vertical-align: inherit;">واستخدم وضع مفتاح الإعداد </font></font><em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">فقط :</font></font></em><font dir="auto" style="vertical-align: inherit;"></font><pre><code class="language-bash">netbird up --setup-key "&lt;KEY&gt;" --management-url https://api.netbird.io --hostname "&lt;machine&gt;" --log-file C:\ProgramData\Motech\netbird.log
+</code></pre>
+</li>
+<li><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">تحقق مسبقًا من مفتاح الإعداد باستخدام واجهة برمجة تطبيقات NetBird على الخادم قبل إرساله إلى الوكيل.</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> يتم إنشاء المفتاح </font><font dir="auto" style="vertical-align: inherit;">اليوم </font><font dir="auto" style="vertical-align: inherit;">. إذا تم استخدام هذا المفتاح في تثبيت سابق، </font><font dir="auto" style="vertical-align: inherit;">فسيتم الرجوع تلقائيًا إلى تسجيل الدخول الموحد (SSO) وسيتم تطبيق مهلة 45 ثانية. أضف </font><font dir="auto" style="vertical-align: inherit;">شرطًا في </font><font dir="auto" style="vertical-align: inherit;">( </font><font dir="auto" style="vertical-align: inherit;">) مباشرةً قبل إعادة إصدار المفتاح - إذا لم يتم التحقق منه، </font></font><code>CreateSetupKey</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">فأعد </font><font dir="auto" style="vertical-align: inherit;">إنشاء المفتاح. أو ببساطة أعد إنشاء المفتاح تلقائيًا في كل سجل - فهي لا تكلف شيئًا.</font></font><code>backend/internal/netbird/netbird.go:51-68</code><font dir="auto" style="vertical-align: inherit;"></font><code>type:"one-off", usage_limit:1, expires_in:86400</code><font dir="auto" style="vertical-align: inherit;"></font><code>netbird up</code><font dir="auto" style="vertical-align: inherit;"></font><code>GET /api/setup-keys/{id}</code><font dir="auto" style="vertical-align: inherit;"></font><code>AgentRegister</code><font dir="auto" style="vertical-align: inherit;"></font><code>handlers.go:</code><font dir="auto" style="vertical-align: inherit;"></font><code>used_count &gt; 0</code><font dir="auto" style="vertical-align: inherit;"></font></li>
+<li><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">استخدم فحص مراقبة النظام بدلاً من انتظار خروج واجهة سطر الأوامر.</font></font></strong> <code>netbird up</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> قد يُعيد الأمر نجاح العملية بينما لا يزال البرنامج الخفي قيد الاتصال. استبدل الأمر </font></font><code>.Run()</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">`-then-sleep` بما يلي:</font></font><pre><code class="language-go">if err := silentCmdCtx(upCtx, path, args...).Start(); err != nil { ... }<font></font>
+// Now poll netbird status --json for up to 30s<font></font>
+for i := 0; i &lt; 30; i++ {<font></font>
+    if ip := netbirdPeerIP(); ip != "" { return nil }<font></font>
+    time.Sleep(time.Second)<font></font>
+}<font></font>
+</code></pre><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">
+هذا يفصل بين "هل تم تشغيل واجهة سطر الأوامر" و "هل نحن بالفعل على الشبكة".</font></font></li>
+<li><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">اجعل كل خطوة متكررة النتائج، وأصدر ملف تقدم بصيغة JSON</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> يمكن لواجهة المستخدم الرسومية/لوحة التحكم استطلاعه، على سبيل المثال </font></font><code>C:\ProgramData\Motech\install-progress.json</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">باستخدام الأمر `.`. يكون </font><font dir="auto" style="vertical-align: inherit;">الملف </font></font><code>{"step":3,"status":"ok","detail":"netbird joined; peer=100.95.x.y"}</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الحالي </font><font dir="auto" style="vertical-align: inherit;">مناسبًا لتشغيله في سطر الأوامر، ولكنه غير مرئي للعملية الفرعية لواجهة المستخدم الرسومية.</font></font><code>fmt.Printf("[%d/5] ...")</code><font dir="auto" style="vertical-align: inherit;"></font><code>cmd/agent/main.go:68-98</code><font dir="auto" style="vertical-align: inherit;"></font></li>
+</ol>
+<p><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">ضمانة أقوى لإتمام التثبيت</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> (شرط "الانتهاء دائمًا"): يتم تغليف كتلة الخطوات الخمس بالكامل في عنصر رئيسي </font></font><code>context.WithTimeout(ctx, 5*time.Minute)</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">وعنصر فرعي </font></font><code>defer func() { writeFinalStatus(...) }()</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">. ثم يقوم المثبت بكتابة إحدى حالات الإنهاء الثلاث على القرص: </font></font><code>ok</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">، </font></font><code>warning(s)</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">، </font></font><code>failed-but-recoverable</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">. لا توجد حالة رابعة. بالاقتران مع </font></font><code>RestartOnFailure: 3×1min</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">في ملف XML للمهام المجدولة ( </font></font><code>task_windows.go:59-62</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">)، يتم إصلاح التثبيت الذي ينتهي </font></font><code>warning</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">تلقائيًا بعد إعادة التشغيل.</font></font></p>
+<hr>
+<h3><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">المسألة 3 - التحقق النهائي: </font></font><code>VerifySSHReady</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الاكتمال</font></font></h3>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">اليوم، تتحقق الدالة من أمرين ( </font></font><code>sshd_windows.go:43-65</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">):</font></font></p>
+<ol>
+<li><code>Get-Service sshd | .Status == "Running"</code></li>
+<li><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يوجد نص base64 للمفتاح العام المتوقع في</font></font><code>administrators_authorized_keys</code></li>
+</ol>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">هذا ضروري ولكنه </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">غير كافٍ</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> . قد ينجح الجهاز في كلا الأمرين ومع ذلك يرفض تسجيل دخول SSH الذي ينسخه المشغل من لوحة التحكم. أنماط الفشل الواقعية التي رأيتها والتي وثقتموها </font></font><code>docs/TROUBLESHOOTING.md</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">بالفعل (SSH-001، NB-001، NB-002):</font></font></p>
+<ul>
+<li><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">قاعدة جدار الحماية المسماة </font></font><code>OpenSSH-Server-In-TCP</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">موجودة ولكنها معطلة / تشير إلى ملف تعريف قديم.</font></font></li>
+<li><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">المفتاح موجود في الملف ولكن قائمة التحكم بالوصول للملف خاطئة (المشكلة رقم 5) ← ينجح تبادل المفاتيح، ويفشل مصادقة المفتاح العام بصمت.</font></font></li>
+<li><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">خدمة sshd تعمل ولكنها مرتبطة </font></font><code>::1</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">فقط بـ...</font></font></li>
+<li><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">تم الانضمام إلى NetBird ولكن النظير موجود في مجموعة مختلفة / سياسة ACL ترفض SSH.</font></font></li>
+<li><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">تم تسجيل المهمة المجدولة، لكن المسار الثنائي الذي تشير إليه قديم (إصدار سابق).</font></font></li>
+<li><font dir="auto" style="vertical-align: inherit;"></font><code>token.go:61-94</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">نبضة القلب 401 لأن TokenManager لم يتم إعادة تحميله بعد ( تم تصميم </font><font dir="auto" style="vertical-align: inherit;">الحالة من أجل ذلك).</font></font></li>
+</ul>
+<p><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">جودة إنتاجية </font></font><code>VerifySSHReady</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">— 5 + 2 فحص:</font></font></strong></p>
+<pre><code class="language-go">type ReadinessReport struct {<font></font>
+    SSHDRunning           bool<font></font>
+    PublicKeyInstalled    bool<font></font>
+    AuthKeysACLCorrect    bool   // owner+ACE list hash check<font></font>
+    FirewallRuleActive    bool   // Get-NetFirewallRule | Where Enabled<font></font>
+    Port22Listening       bool   // net.DialTimeout("tcp","127.0.0.1:22",2s)<font></font>
+    NetbirdPeerConnected  bool   // netbird status --json -&gt; "ManagementState":"Connected"<font></font>
+    HeartbeatAcked        bool   // last server heartbeat &lt;60s ago, no 401<font></font>
+}<font></font>
+</code></pre>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يُسجّل كل فحص سطرًا واحدًا في سجل التدقيق الخاص </font></font><code>agent.log</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">بملف JSON الخاص بتقدم التثبيت. لا يُعلن المُثبِّت عن نجاح التثبيت إلا إذا </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">كانت جميع النقاط السبع خضراء</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> . إذا كانت خمس نقاط خضراء ونقطتان صفراء، يُعلن عن حالة "جاهز (متدهور)" ويُسجّل التحذير في لوحة التحكم - ولا يُعلن أبدًا عن "التثبيت بنجاح" في حالة الجاهزية الجزئية.</font></font></p>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">لإجراء فحص ACL تحديدًا، قم بتجزئة قائمة ACE ومقارنتها:</font></font></p>
+<pre><code class="language-powershell">(Get-Acl C:\ProgramData\ssh\administrators_authorized_keys).Access |<font></font>
+  Select IdentityReference,FileSystemRights | ConvertTo-Json<font></font>
+</code></pre>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">المتوقع: مدخلان بالضبط — </font></font><code>NT AUTHORITY\SYSTEM:FullControl</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">و </font></font><code>BUILTIN\Administrators:FullControl</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">، بالإضافة إلى </font></font><code>AreAccessRulesProtected=$true</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">(مع تعطيل التوريث). أي شيء آخر يفشل. هذا يطابق عقد مايكروسوفت الموثق (Microsoft Learn </font></font><a href="https://learn.microsoft.com/en-us/windows-server/administration/openssh/openssh-server-configuration"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">7</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ، وPowerShell/Win32-OpenSSH wiki </font></font><a href="https://github.com/PowerShell/Win32-OpenSSH/wiki/Security-protection-of-various-files-in-win32-openssh"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">8</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ).</font></font></p>
+<hr>
+<h3><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">المشكلة الرابعة - لغز "يبدو أن ملف exe يتعطل، ولا يوجد مخرج" - السبب الجذري</font></font></h3>
+<p><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الخلاصة: لم يتعطل البرنامج. لقد خدعك نظام الحماية.</font></font></strong></p>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">شهادة:</font></font></p>
+<ul>
+<li><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">تم تشغيل نفس البرنامج بشكل جيد على نفس الجهاز في 2026-06-05 (جهازك </font></font><code>HANDOFF.md</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">).</font></font></li>
+<li><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يقوم الكود الجديد </font></font><code>cmd/agent/main.go:37-50</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">بإعادة توجيه التسجيل بشكل وقائي إلى ملف </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">قبل أن</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> يقوم الوكيل بأي شيء يمكن أن يمس stderr، مع </font></font><code>log.SetOutput(io.Discard)</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">وجوده كحد أدنى للسلامة - وهو </font><font dir="auto" style="vertical-align: inherit;">النمط المطلوب </font></font><em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">بالضبط في الجلسة 0 (Microsoft TechCommunity </font></font></em><font dir="auto" style="vertical-align: inherit;"></font><a href="https://techcommunity.microsoft.com/blog/askperf/application-compatibility---session-0-isolation/372361"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">9</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ).</font></font></li>
+<li><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">أثبتت عملية </font></font><code>go vet</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">البناء النظيفة عدم وجود أي تلف في وقت الترجمة.</font></font></li>
+</ul>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">ما حدث خطأً في جهاز الاختبار الخاص بك: كنت تقوم بتوصيل سلسلة من الروابط:</font></font></p>
+<pre><code>local-bash → ssh → cloudflare quick-tunnel → sshd-on-Windows<font></font>
+   → PowerShell (the Windows OpenSSH default shell since 2019)<font></font>
+   → cmd /c "motech-connect.exe ... &gt; out.txt 2&gt;&amp;1"<font></font>
+</code></pre>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">تتفاقم أربع مشاكل هنا:</font></font></p>
+<ol>
+<li><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الصدفة الافتراضية هي PowerShell.</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> يُعيّن Windows OpenSSH صدفة PowerShell كنظام فرعي افتراضي منذ إصدارات Win32-OpenSSH 2019 وما بعدها (GitHub Wiki — DefaultShell </font></font><a href="https://github.com/PowerShell/Win32-OpenSSH/wiki/DefaultShell"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">10</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ). تُحلل PowerShell سطر الأوامر باستخدام </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">قواعد الاقتباس الخاصة بها</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ، ثم تُعيد إرساله </font></font><code>cmd /c</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">باستخدام </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">قواعد CMD</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> . يتم التعامل مع السلاسل النصية التي تحتوي على </font></font><code>&amp;</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">علامات اقتباس مفردة </font></font><code>|</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">أو </font></font><code>^</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">مزدوجة أو أقواس غير متوازنة بشكل غير مُعلن.</font></font></li>
+<li><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">تضيف الأنفاق السريعة من Cloudflare انقطاعًا مؤقتًا لمدة 100 ثانية</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> وتعيد كتابة بعض أكواد التحكم - قد يتم تخزين الإخراج مؤقتًا حتى ينقطع الاتصال، وعند هذه النقطة ترى "لا يوجد إخراج" ولكن تم تشغيل الملف التنفيذي بشكل جيد.</font></font></li>
+<li><strong><code>stdout</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يتم تخزين البيانات عبر SSH على مستوى الأسطر بواسطة Go ولكن يتم تخزينها على مستوى الكتل بواسطة PowerShell عند إعادة إصدارها</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ، لذلك يمكن لعملية الخروج السريع كتابة 50 سطرًا لا تراها أبدًا لأن عملية ssh الأصلية تفصل أولاً.</font></font></li>
+<li><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">تم تعطيل نشر رمز الخروج</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> في </font></font><code>PowerShell → cmd /c</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">: يتم تعيين رمز الخروج الخاص بـ PowerShell </font></font><code>$LASTEXITCODE</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">، لكن عميل ssh لا يرى سوى رمز الخروج الخاص بـ PowerShell، والذي يكون </font></font><code>0</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">بغض النظر عن </font></font><code>cmd /c</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">رمز الخروج الخاص بـ إلا إذا قمت بكتابة رمز الخروج بشكل صريح </font></font><code>exit $LASTEXITCODE</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">.</font></font></li>
+</ol>
+<p><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">حزام أمان موثوق - ثلاثة خيارات مرتبة حسب الأفضلية:</font></font></strong></p>
+<p><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">أ. قم بفرض استخدام الصدفة الافتراضية لـ OpenSSH </font></font><code>cmd.exe</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">مرة واحدة على جهاز الاختبار، ثم قم بتشغيل الملفات الثنائية مباشرة:</font></font></strong></p>
+<pre><code class="language-powershell"># on the Windows test machine (once, elevated)<font></font>
+New-ItemProperty -Path "HKLM:\SOFTWARE\OpenSSH" -Name DefaultShell `<font></font>
+  -Value "C:\Windows\System32\cmd.exe" -PropertyType String -Force<font></font>
+Restart-Service sshd<font></font>
+</code></pre>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">عندها يصبح حزامك بسيطًا:</font></font></p>
+<pre><code class="language-bash">ssh test@win 'C:\Users\test\motech-connect.exe register --token ABCD &gt; C:\tmp\out.txt 2&gt;&amp;1 &amp; echo ERR=%ERRORLEVEL%'<font></font>
+ssh test@win 'type C:\tmp\out.txt'<font></font>
+</code></pre>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">هذا موثق ومدعوم على موقع Win32-OpenSSH wiki (github.com </font></font><a href="https://github.com/PowerShell/Win32-OpenSSH/wiki/DefaultShell"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">10</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ).</font></font></p>
+<p><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">ب. قم بتغليفها باستخدام PowerShell واحد </font></font><code>Start-Process -Wait -PassThru</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">والتقط مخرجات + تدفقات البيانات:</font></font></strong></p>
+<pre><code class="language-bash">ssh test@win 'powershell -NoProfile -Command "$p = Start-Process -FilePath \"C:\Users\test\motech-connect.exe\" -ArgumentList \"register\",\"--token\",\"ABCD\" -RedirectStandardOutput \"C:\tmp\so.txt\" -RedirectStandardError \"C:\tmp\se.txt\" -PassThru -Wait; exit $p.ExitCode"; echo "exit=$?"; ssh test@win type C:\tmp\so.txt'
+</code></pre>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يستمر ذلك في الاقتباس في عالم أداة واحدة (StackOverflow التقاط stdout </font></font><a href="https://stackoverflow.com/questions/8761888/capturing-standard-out-and-error-with-start-process"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">11</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ).</font></font></p>
+<p><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">ج. استخدم WinRM ( </font></font><code>pwsh</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">عبر </font></font><code>winrs</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">أو عن بُعد باستخدام pwsh) - لكنه يتطلب HTTPS أو نطاقًا.</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> تخطَّ هذه الخطوة للاختبارات الفردية.</font></font></p>
+<p><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">استخدم الخيار أ للتطوير اليومي، والخيار ب للتكامل المستمر.</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> وقم بإزالة نفق Cloudflare السريع لجهاز الاختبار الفعلي - استخدم منفذًا حقيقيًا (Tailscale، أو شبكة NetBird الخاصة، أو قم ببساطة بتوجيه الجهاز الظاهري للاختبار إلى نفس مستأجر NetBird).</font></font></p>
+<hr>
+<h3><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">المشكلة 5 - </font></font><code>administrators_authorized_keys</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">ACL: هل تم </font></font><code>icacls</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">إصلاح المشكلة بالكامل؟</font></font></h3>
+<p><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">ملفك (sshd_windows.go:31-32):</font></font></strong></p>
+<pre><code class="language-powershell">$p='C:\ProgramData\ssh\administrators_authorized_keys'<font></font>
+if (Test-Path $p) { icacls $p /inheritance:r /grant 'Administrators:F' /grant 'SYSTEM:F' | Out-Null }<font></font>
+</code></pre>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">هذا يطابق </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">بايتًا ببايت</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> أمر Microsoft Learn المتعارف عليه (Microsoft Learn — إدارة مفاتيح OpenSSH </font></font><a href="https://learn.microsoft.com/en-us/windows-server/administration/openssh/openssh_keymanagement"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">12</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ) وويكي Win32-OpenSSH </font></font><a href="https://github.com/PowerShell/Win32-OpenSSH/wiki/Security-protection-of-various-files-in-win32-openssh"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">8</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> :</font></font></p>
+<pre><code>icacls administrators_authorized_keys /inheritance:r<font></font>
+icacls administrators_authorized_keys /grant SYSTEM:(F)<font></font>
+icacls administrators_authorized_keys /grant BUILTIN\Administrators:(F)<font></font>
+</code></pre>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">وتؤكد صفحة تكوين خادم OpenSSH من مايكروسوفت </font></font><a href="https://learn.microsoft.com/en-us/windows-server/administration/openssh/openssh-server-configuration"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">رقم 7</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ذلك صراحةً: </font></font><em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">"يجب أن يحتوي ملف administrators_authorized_keys فقط على إدخالات أذونات لحساب NT Authority\SYSTEM ومجموعة الأمان BUILTIN\Administrators".</font></font></em></p>
+<p><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">ثلاثة تحسينات طفيفة على اكتمال البيانات</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> (جميعها صالحة لأنظمة التشغيل Windows 10/11/Server 2016–2025):</font></font></p>
+<ol>
+<li>
+<p><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">أمان الترجمة.</font></font></strong> <code>'Administrators'</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> هذه السلسلة باللغة الإنجليزية. في أنظمة ويندوز العربية والفرنسية والألمانية وغيرها، يتم ترجمتها ( </font></font><code>المسؤولون</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">،، </font></font><code>Administratoren</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">...) </font></font><code>icacls</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">وستفشل إما بصمت أو برسالة خطأ مبهمة. </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">استخدم معرّفات الأمان (SIDs).</font></font></strong></p>
+<pre><code class="language-powershell">icacls $p /inheritance:r /grant *S-1-5-32-544:F /grant *S-1-5-18:F
+</code></pre>
+<p><code>S-1-5-32-544</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">= BUILTIN\Administrators، </font></font><code>S-1-5-18</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">= NT AUTHORITY\SYSTEM. هذه توصية مايكروسوفت نفسها في الصفحة نفسها عند وجود مخاوف بشأن التوطين (Microsoft Learn </font></font><a href="https://learn.microsoft.com/en-us/windows-server/administration/openssh/openssh_keymanagement"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">12</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ). ونظرًا لقاعدة مستخدميكم الناطقين باللغة العربية، فهذا أمر لا غنى عنه.</font></font></p>
+</li>
+<li>
+<p><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">حدد </font></font><em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">المالك</font></font></em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> صراحةً.</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> يفرض sshd أيضًا الملكية، وليس فقط قائمة التحكم بالوصول (ACE). أضف:</font></font></p>
+<pre><code class="language-powershell">icacls $p /setowner *S-1-5-18
+</code></pre>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">هذا ما </font></font><code>Set-Acl … | icacls /setowner system</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">ورد في دليل Win32-OpenSSH wiki.</font></font></p>
+</li>
+<li>
+<p><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">قم بتشغيله بعد كتابة الملف.</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ترتيبك </font></font><code>ensureSSHServer</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الحالي </font></font><code>sshd_windows.go:16-35</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يضع إصلاح قائمة التحكم بالوصول في الخطوة 4، ولكن فقط إذا </font><font dir="auto" style="vertical-align: inherit;">كان </font></font><em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الملف موجودًا بالفعل</font></font></em><font dir="auto" style="vertical-align: inherit;"></font><code>if (Test-Path $p)</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> . عند التثبيت الأول، عندما يقوم </font></font><code>installAuthorizedKey</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">البرنامج </font></font><code>keys.go:17-48</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">بإنشاء الملف، تتم هذه الخطوة في </font></font><code>installServerPublicKey</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">البرنامج </font></font><code>agent.go:148-156</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الذي يستدعي </font></font><code>installAuthorizedKey</code> <em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">أولًا</font></font></em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ، ثم </font></font><code>ensureSSHServer</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">. يبدو الترتيب صحيحًا </font></font><code>agent.go</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">، ولكن </font></font><code>ensureSSHServer</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يتم تشغيل الخطوة 4 بغض النظر عن ذلك، </font></font><em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">حتى</font></font></em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> في الاستدعاءات اللاحقة عندما يكون الملف موجودًا بالفعل مع قوائم تحكم بالوصول خاطئة من تثبيت فاشل سابق. ✅ احتفظ بالترتيب؛ فقط تأكد من تشغيله دون شروط (احذف </font></font><code>if (Test-Path)</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">- إنه آمن؛ </font></font><code>icacls</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">في حالة عدم وجود ملف، لن يحدث أي تغيير).</font></font></p>
+</li>
+</ol>
+<p><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الخلاصة:</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> تعديل قائمة التحكم بالوصول (ACL) </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">صحيح</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ، لكن مشكلة التوطين ستؤثر على أكثر من 100 جهاز مضيف باللغة العربية. استخدم صيغة SID. ( </font></font><code>learn.microsoft.com</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">).</font></font></p>
+<hr>
+<h2><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">أ. لغة/بيئة تشغيل الوكيل — احتفظ بلغة Go، ولكن اذهب إلى أبعد من ذلك</font></font></h2>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">النظام الذي لديك هو بالضبط ما يجب أن يكون عليه وكيل ويندوز بحجم 1000 مستخدم: </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">ملف تنفيذي واحد مرتبط بشكل ثابت، بحجم 10 ميجابايت تقريبًا، بدون بيئة تشغيل، يتم نشره من ملف واحد، مُصمم للعمل مع أنظمة لينكس، وقابل للتوقيع باستخدام Authenticode</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> . دعني أؤكد ذلك بمقارنته بكل بديل بأدلة ملموسة:</font></font></p>
+<table>
+<thead>
+<tr>
+<th><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">لغة</font></font></th>
+<th><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الحجم الثنائي</font></font></th>
+<th><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">التبعية في وقت التشغيل</font></font></th>
+<th><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">بيئة عمل مريحة لخدمة العملاء</font></font></th>
+<th><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">سهولة استخدام AV/EDR</font></font></th>
+<th><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">البناء المتقاطع من لينكس</font></font></th>
+<th><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الحكم</font></font></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">اذهب (لك)</font></font></strong></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">حوالي 10 ميجابايت</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">لا أحد</font></font></td>
+<td><code>kardianos/service</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">+</font></font><code>golang.org/x/sys/windows/svc</code></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">جيد (موقع من قبل PE، بدون كتل نصية)</font></font></td>
+<td><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">نعم</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ، أصلي</font></font></td>
+<td><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يحفظ</font></font></strong></td>
+</tr>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الصدأ</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">حوالي 3-6 ميجابايت</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">لا أحد</font></font></td>
+<td><code>windows-service</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">صندوق (ممتاز)</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الأفضل (بدون جمع البيانات المهملة، بدون وقت تشغيل)</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">نعم عبر </font></font><code>cross</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">+</font></font><code>xwin</code></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">فوز هامشي؛ تكلفة إعادة الكتابة غير مبررة</font></font></td>
+</tr>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">سي شارب / دوت نت 9</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">حجمها يتراوح بين 60 و140 ميجابايت كوحدة مستقلة، أو حوالي 50 كيلوبايت تحتاج إلى بيئة تشغيل .NET</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">بيئة تشغيل .NET (حجمها الأساسي 140 ميجابايت)</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الأفضل (نظام إدارة الإصدارات الأصلي، خدمة الخلفية)</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الأفضل (مناسب للمدافعين لأنه موقع من قبل CLR)</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">نعم، لكنها ثقيلة</font></font></td>
+<td><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">والأسوأ من ذلك</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ، أن حجم وقت التشغيل يصل إلى 1000 (متوسط </font></font><a href="https://medium.com/devs-community/the-ultimate-guide-to-net-9-vs-go-vs-rust-api-performance-in-2025-80fde3530457"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">​​13</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> )</font></font></td>
+</tr>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">لغة سي++</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">صغيرة الحجم لكنك تكتب كل شيء</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">لا أحد</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">Win32 SCM مباشرة</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">ممتاز</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">مؤلم</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">ألم لا داعي له</font></font></td>
+</tr>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">باور شيل</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">غير متوفر</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">PSCore ~70 ميجابايت</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يتطلب برنامجًا تنفيذيًا وسيطًا</font></font></td>
+<td><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">سيء</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> — برنامج الحماية Defender / EDR يحب حظر ملفات .ps1 + وضع اللغة المقيد يعطلك</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">غير متوفر</font></font></td>
+<td><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">لا</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ، قواعد التعرف التلقائي على الكلام الصارمة تمنع ذلك في بيئات مزودي خدمات الإدارة.</font></font></td>
+</tr>
+</tbody>
+</table>
+<p><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الترقية المادية الوحيدة مقارنةً ببرنامج Go الحالي لديك</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> هي استبداله </font></font><code>kardianos/service</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">بالحزمة </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الرسمية</font></font><code>golang.org/x/sys/windows/svc</code></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ونظام إدارة الإصدارات (SCM) مباشرةً. </font></font><code>kardianos</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">هو غلاف قابلية نقل؛ أنت تستهدف نظام Windows فقط للوكيل. يوفر لك نظام إدارة الإصدارات المباشر تقارير أفضل عن حالات فشل بدء التشغيل، ويتيح لك التعيين </font></font><code>SERVICE_AUTO_START</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">باستخدام </font></font><code>dwDelayedAutoStart=1</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">(تبعية برنامج NetBird daemon!)، والتحكم </font></font><code>RecoveryActions</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">(إعادة التشغيل عند الفشل الأول/الثاني/الثالث) من التعليمات البرمجية، وتجنب تسريبات التجريد التي تم الإبلاغ عنها في المنتديات ("يعمل تطبيق Go الخاص بي بشكل جيد في الوضع التفاعلي، ولكنه يفشل في البدء بشكل صحيح عند تشغيله كخدمة Windows" </font></font><a href="https://forum.golangbridge.org/t/my-go-application-works-fine-in-interactive-mode-but-it-fails-to-start-correctly-when-run-as-a-windows-service/36252"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">14</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ).</font></font></p>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الشبكة: </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">Go صحيح. حسّن من خلال (أ) بناء نظامين فرعيين لنفس المصدر، (ب) الاستبدال </font></font><code>kardianos</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">بـ </font></font><code>x/sys/windows/svc</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">، (ج) إضافة </font></font><code>-trimpath -ldflags="-s -w -buildid="</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">من أجل عمليات بناء قابلة للتكرار (مطلوب لسلسلة الحفظ Authenticode على نطاق 1000).</font></font></strong></p>
+<hr>
+<h2><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">ب. الدليل الشامل لإنشاء عمليات فرعية صامتة/بدون واجهة رسومية + الجلسة 0</font></font></h2>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">ثلاث طبقات، بهذا الترتيب تحديداً. أي خطأ في إحداها سيؤدي إلى وميض نافذة أو إغلاق الطبقة الرئيسية.</font></font></p>
+<h3><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الطبقة 1 - النظام الفرعي للنظام </font></font><em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الرئيسي</font></font></em></h3>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">ملف Go الثنائي الذي تم إنشاؤه بدون وحدة تحكم </font></font><code>-H windowsgui</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">هو ملف PE </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">لنظام وحدة التحكم</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> . عند تشغيله بواسطة SCM/Task Scheduler، يقوم Windows بإنشاء وحدة تحكم؛ كل شيء يعمل بشكل صحيح، ولكن </font></font><em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">قد يظهر</font></font></em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> مربع أسود وامض. قم بإنشاء نسخة الخدمة طويلة الأمد من برنامجك </font></font><code>-H windowsgui</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">بدون تخصيص وحدة تحكم على الإطلاق، واحتفظ بنسخة CLI منفصلة للعمليات.</font></font></p>
+<pre><code class="language-bash"># service variant (run/install/uninstall paths still work — no console needed)<font></font>
+GOOS=windows GOARCH=amd64 go build -trimpath -ldflags="-H windowsgui -s -w -buildid=" \<font></font>
+    -o motech-connect.exe ./cmd/agent<font></font>
+# ops/CLI variant (you want to see output)<font></font>
+GOOS=windows GOARCH=amd64 go build -trimpath -ldflags="-s -w -buildid=" \<font></font>
+    -o motech-connect-cli.exe ./cmd/agent<font></font>
+</code></pre>
+<p><font dir="auto" style="vertical-align: inherit;"></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">عندما يقوم نظام فرعي لواجهة المستخدم الرسومية بإنشاء نظام فرعي لوحدة التحكم (powershell، schtasks، netbird)، فإن النظام الفرعي لا</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> يرث وحدة تحكم </font><font dir="auto" style="vertical-align: inherit;">افتراضيًا - ولكن نظام التشغيل Windows سيقوم بتخصيص وحدة تحكم جديدة ما لم تقم بتمرير </font></font><code>CREATE_NO_WINDOW</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">(StackOverflow </font></font><a href="https://stackoverflow.com/questions/42500570/how-to-hide-command-prompt-window-when-using-exec-in-golang"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">2</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ).</font></font></p>
+<h3><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الطبقة 2 — </font></font><code>SysProcAttr</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الأعلام</font></font></h3>
+<pre><code class="language-go">c.SysProcAttr = &amp;syscall.SysProcAttr{<font></font>
+    HideWindow:    true,                   // SW_HIDE for window-class children<font></font>
+    CreationFlags: 0x08000000,             // CREATE_NO_WINDOW for console children<font></font>
+    // do NOT add DETACHED_PROCESS unless you also discard the pipes — incompatible with .CombinedOutput()<font></font>
+}<font></font>
+</code></pre>
+<p><code>HideWindow</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يُترجم هذا إلى </font></font><code>STARTUPINFO.wShowWindow = SW_HIDE</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">(مصدر استدعاء النظام Go </font></font><a href="https://go.dev/src/syscall/exec_windows.go"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">15</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ). </font></font><code>CREATE_NO_WINDOW</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">وهو الخيار الوحيد الذي يمنع </font></font><code>kernel32!AllocConsole</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">تشغيل العمليات الفرعية في وحدة التحكم. ويشمل هذا الخيار العمليات الفرعية التي تملك نافذة (مثل شريط مهام NetBird) والعمليات الفرعية التي تعمل في وحدة التحكم فقط (مثل PowerShell).</font></font></p>
+<h3><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الطبقة 3 - جلسة 0: انضباط الإخراج القياسي/الخطأ القياسي</font></font></h3>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">تعمل خدمة ويندوز في </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الجلسة 0</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ، بمعزل عن المستخدمين التفاعليين منذ نظام التشغيل فيستا (Microsoft TechCommunity </font></font><a href="https://techcommunity.microsoft.com/blog/askperf/application-compatibility---session-0-isolation/372361"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">9</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ، Core Technologies PDF </font></font><a href="https://www.coretechnologies.com/WindowsServices/Microsoft-Impact-of-Session-0-Isolation-on-Services-and-Drivers-in-Windows-Vista.pdf"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">16</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ). لا تحتوي العملية افتراضيًا على مدخلات/مخرجات/أخطاء قياسية (stdin/stdout/stderr) - </font></font><code>os.Stderr</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">إما أن يكون مؤشرًا إلى </font></font><code>\\Device\\Null</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">أو إلى مؤشر غير صالح. قد يؤدي خطأ </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">واحد </font></font><code>fmt.Fprintln(os.Stderr, ...)</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">من دالة مؤجلة في حالة ذعر إلى إيقاف العملية.</font></font></strong></p>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">إن ما تقوم به أنت </font></font><code>cmd/agent/main.go:37-50</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">و </font></font><code>logToFile</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">( </font></font><code>:127-152</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">) بالفعل هو التصرف الصحيح - </font></font><code>log.SetOutput(io.Discard)</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يتم تعيينه </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">أولاً</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ، ثم يتم ترقيته إلى ملف إذا كان بالإمكان فتحه. طبق نفس المبدأ على الأطفال:</font></font></p>
+<pre><code class="language-go">func silentCmd(name string, args ...string) *exec.Cmd {<font></font>
+    c := exec.Command(name, args...)<font></font>
+    c.SysProcAttr = &amp;syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}<font></font>
+    // CRITICAL: never inherit a service-context broken handle to a child.<font></font>
+    c.Stdin, c.Stdout, c.Stderr = nil, io.Discard, io.Discard<font></font>
+    return c<font></font>
+}<font></font>
+func silentCmdCapture(name string, args ...string) (string, error) {<font></font>
+    c := exec.Command(name, args...)<font></font>
+    c.SysProcAttr = &amp;syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}<font></font>
+    var buf bytes.Buffer<font></font>
+    c.Stdout, c.Stderr = &amp;buf, &amp;buf<font></font>
+    err := c.Run()<font></font>
+    return buf.String(), err<font></font>
+}<font></font>
+</code></pre>
+<p><font dir="auto" style="vertical-align: inherit;"></font><em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">بالنسبة للأوامر التي يجب ألا</font></font></em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> يتم حظر </font><font dir="auto" style="vertical-align: inherit;">الوكيل نفسه بواسطة (على سبيل المثال، </font></font><code>taskkill</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">)، قم بتغليفها بكائن مهمة بحيث يمكن إنهاء العملية الفرعية المعلقة عند إيقاف تشغيل الوكيل:</font></font></p>
+<pre><code class="language-go">// pseudo — use github.com/kolesnikovae/go-paddle-sdk/jobobject or roll your own<font></font>
+job := createJobObject()<font></font>
+assignProcessToJob(job, cmd.Process.Pid)<font></font>
+// closing job kills all children atomically<font></font>
+</code></pre>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">ميزة إضافية: يتيح لك كائن المهمة أيضًا فرض </font></font><code>JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">عدم ترك أي عنصر أب معطل أي عناصر يتيمة - وهو نوع من الأخطاء التي رأيتها بالفعل ("تم تسجيل بدء الحلقة مرتين"، وهذا هو سبب </font></font><code>singleinstance_windows.go</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">وجودها).</font></font></p>
+<hr>
+<h2><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">ج. ★ بيئة اختبار ويندوز على جهازك الظاهري الذي يعمل بنظام لينكس — وصفة دقيقة، انسخها والصقها</font></font></h2>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">لديك ثلاثة خيارات جيدة. استخدم </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الخيار الثاني</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> للعمل اليومي، </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">والخيار الأول</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> للتكامل المستمر المتكرر، </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">والخيار الثالث</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> للفحوصات العشوائية. </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">تجنب استخدام Wine</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ، فهو لا يدعم برنامج تشغيل TUN الخاص بـ NetBird، أو خادم OpenSSH، أو نظام إدارة الإصدارات في Windows بشكل صحيح.</font></font></p>
+<h3><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الخيار 1 — QEMU/KVM مع نظام التشغيل Windows 11 (جودة كاملة، مجاني، سريع)</font></font></h3>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الأفضل لـ: إجراء اختبارات عالية الدقة على جهازك الظاهري الذي يعمل بنظام لينكس (بافتراض تفعيل خاصية المحاكاة الافتراضية المتداخلة). يستغرق الإعداد حوالي 30 دقيقة لمرة واحدة.</font></font></p>
+<pre><code class="language-bash"># 0) verify nested virt is on (lscpu | grep -i virt; output should mention VT-x or AMD-V)<font></font>
+sudo apt update &amp;&amp; sudo apt install -y qemu-kvm libvirt-daemon-system virt-manager bridge-utils ovmf swtpm<font></font>
+<font></font>
+# 1) download Windows 11 ISO + virtio drivers<font></font>
+mkdir -p ~/winlab &amp;&amp; cd ~/winlab<font></font>
+# Windows 11 ISO via Microsoft (use your account or fido scripts):<font></font>
+#   https://www.microsoft.com/software-download/windows11<font></font>
+# Or use the official Microsoft Evaluation Center for Windows Server 2022 (free 180-day):<font></font>
+wget 'https://software-static.download.prss.microsoft.com/sg/download/888969d5-f34g-4e03-ac9d-1f9786c66749/SERVER_EVAL_x64FRE_en-us.iso' -O winsrv.iso<font></font>
+wget https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/stable-virtio/virtio-win.iso<font></font>
+<font></font>
+# 2) create a 60 GB qcow2 disk<font></font>
+qemu-img create -f qcow2 win11.qcow2 60G<font></font>
+<font></font>
+# 3) launch the install (8 GB RAM, 4 CPU, virtio NIC, both ISOs attached)<font></font>
+qemu-system-x86_64 \<font></font>
+  -enable-kvm -cpu host,hv_relaxed,hv_vapic,hv_spinlocks=0x1fff,hv_time \<font></font>
+  -smp 4 -m 8192 \<font></font>
+  -machine q35,smm=on \<font></font>
+  -global driver=cfi.pflash01,property=secure,value=on \<font></font>
+  -drive if=pflash,format=raw,unit=0,file=/usr/share/OVMF/OVMF_CODE_4M.secboot.fd,readonly=on \<font></font>
+  -drive if=pflash,format=raw,unit=1,file=OVMF_VARS_4M.ms.fd \<font></font>
+  -tpmdev emulator,id=tpm0,chardev=chrtpm -chardev socket,id=chrtpm,path=/tmp/swtpm.sock \<font></font>
+  -device tpm-tis,tpmdev=tpm0 \<font></font>
+  -drive file=win11.qcow2,if=virtio,cache=none,format=qcow2 \<font></font>
+  -drive file=winsrv.iso,media=cdrom,index=2 \<font></font>
+  -drive file=virtio-win.iso,media=cdrom,index=3 \<font></font>
+  -netdev user,id=n0,hostfwd=tcp::2222-:22,hostfwd=tcp::3389-:3389 \<font></font>
+  -device virtio-net,netdev=n0 \<font></font>
+  -vga virtio -display gtk<font></font>
+<font></font>
+# (start swtpm in another shell, see https://wiki.gbe0.com/en/linux/guides/windows-11-kvm)<font></font>
+swtpm socket --tpm2 --tpmstate dir=/tmp/swtpm --ctrl type=unixio,path=/tmp/swtpm.sock -d<font></font>
+</code></pre>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">اتبع دليل RedHat </font></font><a href="https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/configuring_and_managing_virtualization/installing-and-managing-windows-virtual-machines-on-rhel_configuring-and-managing-virtualization"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">رقم 17</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> عندما يطلب منك مُثبِّت Windows برامج تشغيل الأقراص (قم بتحميلها </font></font><code>viostor</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">من ملف virtio ISO). إجمالي وقت التثبيت: حوالي 15 دقيقة على معالج حديث.</font></font></p>
+<p><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">بعد تشغيل نظام ويندوز، داخل الجهاز الظاهري (باستخدام PowerShell، بصلاحيات المسؤول):</font></font></strong></p>
+<pre><code class="language-powershell"># enable OpenSSH Server and set cmd as default shell — fixes Problem 4<font></font>
+Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0<font></font>
+Start-Service sshd<font></font>
+Set-Service sshd -StartupType Automatic<font></font>
+New-NetFirewallRule -Name OpenSSH-Server-In-TCP -DisplayName 'OpenSSH Server' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22<font></font>
+New-ItemProperty -Path "HKLM:\SOFTWARE\OpenSSH" -Name DefaultShell -Value "C:\Windows\System32\cmd.exe" -PropertyType String -Force<font></font>
+Restart-Service sshd<font></font>
+# create test user with admin<font></font>
+net user motechtest 'P@ssw0rd!' /add<font></font>
+net localgroup administrators motechtest /add<font></font>
+</code></pre>
+<p><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">من جهازك الظاهري الذي يعمل بنظام Linux</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> (خرائط إعادة توجيه المنفذ في QEMU </font></font><code>localhost:2222</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">→ guest:22):</font></font></p>
+<pre><code class="language-bash"># transfer the freshly built exe<font></font>
+scp -P 2222 motech-connect.exe motechtest@127.0.0.1:'C:\Users\motechtest\'<font></font>
+<font></font>
+# run it and capture EVERYTHING:<font></font>
+ssh -p 2222 motechtest@127.0.0.1 'C:\Users\motechtest\motech-connect.exe register --token ABCD-1234-XYZ --server https://qfetmfdn.gensparkclaw.com &gt; C:\tmp\out.txt 2&gt;&amp;1 &amp; echo ERR=%ERRORLEVEL%'<font></font>
+ssh -p 2222 motechtest@127.0.0.1 'type C:\tmp\out.txt'<font></font>
+ssh -p 2222 motechtest@127.0.0.1 'type C:\ProgramData\Motech\agent.log'<font></font>
+<font></font>
+# install NetBird inside, then watch heartbeats live<font></font>
+ssh -p 2222 motechtest@127.0.0.1 'powershell -c "Get-Content C:\ProgramData\Motech\agent.log -Wait -Tail 10"'
+</code></pre>
+<p><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">نصيحة احترافية: التقط صورة للشاشة قبل كل اختبار:</font></font></strong></p>
+<pre><code class="language-bash">qemu-img snapshot -c clean-state win11.qcow2<font></font>
+# ... break things ...<font></font>
+qemu-img snapshot -a clean-state win11.qcow2   # one-second revert<font></font>
+</code></pre>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">هذه هي الميزة الأساسية التي لا يمكنك الحصول عليها في جهاز حقيقي.</font></font></p>
+<h3><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الخيار الثاني - جهاز Azure الظاهري الرخيص (أرخص مسار، لا يتطلب إعدادًا محليًا)</font></font></h3>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">في حال عدم رغبتك بتشغيل QEMU، تبلغ التكلفة حوالي 0.10 دولار أمريكي/ساعة عند التوقف، وحوالي 0.07 دولار أمريكي/ساعة عند </font></font><code>B2s</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">التشغيل (أسعار azure.microsoft.com </font></font><a href="https://azure.microsoft.com/en-us/pricing/free-services"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">18</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ). تكلفة الإيقاف بعد كل اختبار = 0 دولار أمريكي.</font></font></p>
+<pre><code class="language-bash"># install Azure CLI on your Linux VM<font></font>
+curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash<font></font>
+az login<font></font>
+<font></font>
+# create a Windows VM in 30 seconds (uses your default region)<font></font>
+az group create -n motech-test -l eastus<font></font>
+az vm create \<font></font>
+  --resource-group motech-test \<font></font>
+  --name winlab \<font></font>
+  --image MicrosoftWindowsServer:WindowsServer:2022-datacenter-azure-edition:latest \<font></font>
+  --size Standard_B2s \<font></font>
+  --admin-username motech --admin-password 'YourStr0ngP@ss!' \<font></font>
+  --public-ip-sku Standard<font></font>
+<font></font>
+# open RDP + SSH ports<font></font>
+az vm open-port --resource-group motech-test --name winlab --port 22 --priority 1010<font></font>
+az vm open-port --resource-group motech-test --name winlab --port 3389 --priority 1020<font></font>
+<font></font>
+# get the IP<font></font>
+IP=$(az vm show -d -g motech-test -n winlab --query publicIps -o tsv)<font></font>
+echo "Windows VM at $IP"<font></font>
+<font></font>
+# transfer the agent + run it<font></font>
+scp motech-connect.exe motech@$IP:'C:\Users\motech\'<font></font>
+ssh motech@$IP 'C:\Users\motech\motech-connect.exe register --token ABCD ...'<font></font>
+<font></font>
+# DELETE when done — important for cost<font></font>
+az group delete -n motech-test --yes --no-wait<font></font>
+</code></pre>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يُعد دليل البدء السريع من مايكروسوفت مع Azure CLI </font></font><a href="https://learn.microsoft.com/en-us/azure/virtual-machines/windows/quick-create-cli"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">19</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> المرجع الأساسي.</font></font></p>
+<h3><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الخيار 3 - بيئة معزولة لنظام التشغيل ويندوز (نظام تشغيل ويندوز 11، خفيف الوزن، محدود النطاق مع NetBird)</font></font></h3>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">إذا كان لديك جهاز يعمل بنظام Windows 10/11 Pro/Enterprise في أي مكان (جهازك الشخصي، جهاز المستخدم، إلخ)، فإن Windows Sandbox يُنشئ جهازًا افتراضيًا مؤقتًا بحجم 4 جيجابايت في 5 ثوانٍ. يمكنك ضبط الإعدادات باستخدام </font></font><code>.wsb</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">ملف (Microsoft Learn </font></font><a href="https://learn.microsoft.com/en-us/windows/security/application-security/application-isolation/windows-sandbox/windows-sandbox-configure-using-wsb-file"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">20</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ).</font></font></p>
+<pre><code class="language-xml">&lt;Configuration&gt;<font></font>
+  &lt;Networking&gt;Enable&lt;/Networking&gt;<font></font>
+  &lt;MappedFolders&gt;<font></font>
+    &lt;MappedFolder&gt;<font></font>
+      &lt;HostFolder&gt;C:\motech-build&lt;/HostFolder&gt;<font></font>
+      &lt;SandboxFolder&gt;C:\motech&lt;/SandboxFolder&gt;<font></font>
+      &lt;ReadOnly&gt;true&lt;/ReadOnly&gt;<font></font>
+    &lt;/MappedFolder&gt;<font></font>
+  &lt;/MappedFolders&gt;<font></font>
+  &lt;LogonCommand&gt;<font></font>
+    &lt;Command&gt;powershell -ExecutionPolicy Bypass -Command "Start-Process C:\motech\motech-connect.exe -ArgumentList 'register','--token','ABCD' -Wait -RedirectStandardOutput C:\Users\WDAGUtilityAccount\out.txt -RedirectStandardError C:\Users\WDAGUtilityAccount\err.txt"&lt;/Command&gt;<font></font>
+  &lt;/LogonCommand&gt;<font></font>
+&lt;/Configuration&gt;<font></font>
+</code></pre>
+<p><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">ملاحظات: </font></font></strong><font dir="auto" style="vertical-align: inherit;"></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">لا</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> يستمر Windows Sandbox </font><font dir="auto" style="vertical-align: inherit;">(كل تشغيل جديد - مثالي لـ "هل يعمل التثبيت من الصفر؟")، ولا </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يمكنه تشغيل الأجهزة الافتراضية المتداخلة</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ، ويتم تحميل برنامج تشغيل NetBird TUN ولكن التوجيه يتم NAT بشكل كبير، ويعمل SCM لتثبيت الخدمة ولكن ليس دائمًا لاختبارات التشغيل التلقائي عند التمهيد (Sandbox = لا يوجد تمهيد).</font></font></p>
+<h3><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">نبيذ؟ — </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">لا، لا داعي لذلك.</font></font></strong></h3>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يُغطي برنامج Wine جزءًا من واجهة برمجة تطبيقات Windows. فهو </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">لا</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> يدعم: نموذج برنامج تشغيل TUN الخاص بـ WireGuard/NetBird، أو خادم OpenSSH الخاص بنظام Windows (لا يدعمه Wine </font></font><code>sshd.exe</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">)، أو التحقق من رمز المصادقة، أو عزل الجلسة 0، أو مخطط XML 1.3 الخاص بجدولة المهام الذي تستخدمه في Windows </font></font><code>task_windows.go:24</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">. ستكون بذلك تختبر نظام Windows افتراضيًا. تخطَّ هذه الخطوة.</font></font></p>
+<hr>
+<h2><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">د. نتائج مستوى الكود - نقاط القوة، نقاط الضعف، البدائل الأقوى (ملف:سطر)</font></font></h2>
+<h3><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">نقاط القوة (حافظ عليها، لا تغيرها)</font></font></h3>
+<ol>
+<li><strong><code>auth/crypto.go</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">AES-256-GCM</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> مع قيمة عشوائية 12 بايت + نص مشفر = </font></font><code>nonce || ct</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">— بناء مغلف نموذجي ( </font></font><code>crypto.go:18-34</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">).</font></font></li>
+<li><strong><code>token.go</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">TokenManager</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> — ذاكرة تخزين مؤقتة TTL + إعادة تحميل إجبارية عند 401 + 3 × 100 مللي ثانية لإعادة المحاولة ضد قفل الملف المؤقت — يحل مشكلة حقيقية في بيئة الإنتاج مع الاختبارات في </font></font><code>token_test.go</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">.</font></font></li>
+<li><strong><code>singleinstance_windows.go</code></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">— يمنع القفل المتبادل المسمى عالميًا خطأ الحلقة المزدوجة الذي لاحظته في الميدان.</font></font></li>
+<li><strong><code>task_windows.go</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">تُعد مهمة XML المجدولة</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> — LogonTrigger+BootTrigger+RestartOnFailure+StartWhenAvailable+ </font></font><code>&lt;Hidden&gt;true&lt;/Hidden&gt;</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">أفضل </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">ممارسة</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> للبقاء على المضيفين المحصنين (وثائق Microsoft Win32 </font></font><a href="https://learn.microsoft.com/en-us/windows/win32/taskschd/logon-trigger-example--xml-"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">21</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ).</font></font></li>
+<li><strong><code>cmd/agent/main.go:37-50</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">إعادة توجيه سجلات الحماية </font></font><code>io.Discard</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">قبل أي شيء آخر.</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> هذا هو أهم إجراء أمني لجلسة 0.</font></font></li>
+<li><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">نموذج المفتاح المملوك للخادم (ADR-008).</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> لا يغادر المفتاح الخاص الخادم مطلقًا؛ إذ يقوم البرنامج الوسيط بتثبيت الجزء العام فقط. هذا يقضي على فئة كاملة من هجمات تسريب البيانات ويجعل عملية التناوب سهلة للغاية.</font></font></li>
+<li><strong><code>rotation_test.go</code></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">— في الواقع، يختبر آلة الحالة من البداية إلى النهاية بما في ذلك خاصية التكرار في ظل عمليات الدفع المتكررة وحارس "rotate=true بدون install_pubkey".</font></font></li>
+</ol>
+<h3><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">نقاط الضعف + بدائل أقوى ملموسة</font></font></h3>
+<table>
+<thead>
+<tr>
+<th><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">8</font></font></th>
+<th><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">ملف: سطر</font></font></th>
+<th><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">مشكلة</font></font></th>
+<th><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">بديل أقوى</font></font></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">W1</font></font></td>
+<td><code>backend/internal/auth/crypto.go:13-16</code></td>
+<td><code>deriveKey</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">= خوارزمية SHA-256 واحدة للسلسلة الرئيسية. لا يوجد ملح، ولا فصل بين النطاقات. تغيير بايت واحد في السلسلة الرئيسية يُغير </font></font><em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">جميع</font></font></em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> النصوص المشفرة - وهذا في الواقع هو الخطأ الفادح في معيار ADR-008 الموثق "لا تُغير بعد إنشاء العملاء".</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">استخدم </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">خوارزمية HKDF-SHA-256</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> مع قيمة ملح لكل سجل وسلسلة معلومات لكل غرض. خزّن قيمة الملح مع النص المشفر: `version`</font></font></td>
+</tr>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">W2</font></font></td>
+<td><code>backend/internal/auth/auth.go:30,44-53</code></td>
+<td><code>JWT_SECRET</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">هو سلسلة نصية عالمية واحدة، HS256، بدون </font></font><code>kid</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">رأس، بدون فاصل دوران.</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الانتقال إلى التوقيع غير المتماثل </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">EdDSA (Ed25519)</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> . يحتفظ النظام الخلفي بالمفتاح الخاص؛ ويمكن للوكلاء التحقق محليًا باستخدام المفتاح العام دون الحاجة إلى تبادل البيانات. إضافة </font></font><code>kid</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">رأسية ← دعم عدد N من المفاتيح قيد الاستخدام، والتدوير بإضافة مفاتيح جديدة، وإزالة القديمة بعد انتهاء صلاحيتها. تشير إرشادات Curity (curity.io </font></font><a href="https://curity.io/resources/learn/jwt-best-practices/"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">22</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ) و n0rdy (n0rdy.foo </font></font><a href="https://n0rdy.foo/posts/20240328/jwt-jws-jwe-and-how-to-cook-them/"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">23</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ) إلى أن هذا هو الحد الأدنى المطلوب للتدوير.</font></font></td>
+</tr>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">W3</font></font></td>
+<td><code>backend/internal/auth/auth.go:51</code></td>
+<td><code>jwt.SigningMethodHS256</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يتم تضمينها بشكل ثابت في Issue؛ لا يفرض Parse سوى "طريقة HMAC"، لذلك سيتم قبول رمز HS256 مزور يحتوي على سر قابل للتخمين.</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">قم بتثبيت طريقة واحدة فقط في كل من Issue و Parse: </font></font><code>if t.Method.Alg() != "HS256"</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">(أو EdDSA بعد W2). استخدم </font></font><code>jwt.WithValidMethods([]string{"EdDSA"})</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">خيار المحلل.</font></font></td>
+</tr>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">W4</font></font></td>
+<td><code>backend/internal/config/config.go:34</code></td>
+<td><code>JWT_SECRET</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">القيمة الافتراضية هي السلسلة النصية الحرفية </font></font><code>"insecure-dev-secret"</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">. إذا قام شخص ما بنشر المنتج دون تحديد متغيرات البيئة، فسيستخدمها بيئة الإنتاج.</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">ارفض بدء التشغيل إلا إذا </font></font><code>JWT_SECRET</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">تم تعيين قيمة وكان طول الملف ≥ 32 بايت. </font></font><code>MOTECH_KEY_ENCRYPTION_KEY</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">وينطبق الأمر نفسه على . قم بتعطيل البرنامج بسرعة في </font></font><code>config.Load</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">.</font></font></td>
+</tr>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">W5</font></font></td>
+<td><code>backend/internal/handlers/handlers.go: AgentRegister</code></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">عمر وكيل JWT = </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">365 يومًا</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ( </font></font><code>365*24*time.Hour</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">).</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يمكن تقليل مدة الصلاحية إلى 24 ساعة مع تدوير رمز التحديث، أو استخدام رمز JWT قصير مع مفتاح متماثل طويل الأمد لكل وكيل يُستخدم لإنشاء إشارات نبضات القلب. يُعدّ بروتوكول mTLS مع شهادة عميل لكل وكيل (صادرة من خادمك) الترقية القياسية.</font></font></td>
+</tr>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">W6</font></font></td>
+<td><code>backend/internal/handlers/handlers.go: Login</code></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">لا يوجد تحديد لمعدل الوصول ( </font><font dir="auto" style="vertical-align: inherit;">قائمة التحقق </font></font><code>/api/auth/login</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الخاصة بك للتحصين مدرجة على هذا النحو </font><font dir="auto" style="vertical-align: inherit;">).</font></font><code>docs/SECURITY.md</code><font dir="auto" style="vertical-align: inherit;"></font><code>[ ]</code><font dir="auto" style="vertical-align: inherit;"></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">أضف </font></font><code>httprate.LimitByIP(5, time.Minute)</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">من go-chi/httprate. وينطبق الأمر نفسه على </font></font><code>/api/agent/register</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">.</font></font></td>
+</tr>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">W7</font></font></td>
+<td><code>backend/cmd/server/main.go:48-49</code></td>
+<td><code>middleware.Recoverer</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">هذا جيد، لكنك تسجل البيانات في الإخراج القياسي فقط؛ لا توجد سجلات منظمة.</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">التحويل إلى </font></font><code>log/slog</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">JSON؛ إضافة وسيط معرف الطلب؛ الربط بنظام إدارة معلومات الأمان (SIEM) (مثل Elastic أو Loki). يتطلب التدقيق الأمني ​​عالي المستوى هذا الإجراء.</font></font></td>
+</tr>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">W8</font></font></td>
+<td><code>backend/internal/handlers/handlers.go: RotateKey</code></td>
+<td><code>DELETE FROM ssh_keys WHERE client_id=$1</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">— </font><font dir="auto" style="vertical-align: inherit;">يحذف السجل </font></font><em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">بشكل دائم</font></font></em><font dir="auto" style="vertical-align: inherit;"></font><code>rotated_at</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ، بما في ذلك الطابع الزمني السابق اللازم للتحليل الجنائي.</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الحذف الناعم: أضف </font></font><code>revoked_at</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">، احتفظ بالسجل، لا تحذف أبدًا. ينص معيار NIST SP 800-57 الجزء 1 الإصدار 5 على الاحتفاظ بالمفاتيح الملغاة لأغراض التدقيق (NIST </font></font><a href="https://csrc.nist.gov/pubs/sp/800/57/pt1/r5/final"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">24</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ).</font></font></td>
+</tr>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">W9</font></font></td>
+<td><code>agent/internal/agent/keys.go:27-44</code></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يتطابق الاستبدال مع </font></font><em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">السلسلة التي تحتوي على علامة "motech-agent"</font></font></em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> - وهو أمر هش إذا قام أي شخص بتحرير الملف يدويًا.</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">قم بالمطابقة باستخدام نص المفتاح العام ( </font></font><code>keyBody()</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الموجود لديك بالفعل </font></font><code>sshd_windows.go:69-75</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">). استبدل النص بنص المفتاح المحدد، وليس باستخدام وسم نصي حر.</font></font></td>
+</tr>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">W10</font></font></td>
+<td><code>agent/internal/agent/agent.go:300-303</code></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">ترسل حمولة نبضات القلب </font></font><code>peer_id</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">(عنوان IP الخاص بجهاز NetBird) كمعرّف. </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">ويمكن إعادة تعيين</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> عناوين IP الخاصة بجهاز NetBird .</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">أرسل معرّف نظير NetBird </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">(معرّف الكائن)</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ، الذي يتم جلبه مرة واحدة عند الانضمام، ويُخزّن مؤقتًا في ملف agent.json. قم بحلّ عنوان IP ← معرّف النظير على جانب الخادم (أنت تفعل ذلك بالفعل </font></font><code>netbird.go:99-114</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">) — فقط قم بتأجيل هذا الحلّ خطوة واحدة.</font></font></td>
+</tr>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">W11</font></font></td>
+<td><code>agent/internal/agent/sshd_windows.go:18-32</code></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">كل استدعاء لـ PowerShell يدفع تكلفة بدء تشغيل PS التي تبلغ حوالي 300 مللي ثانية؛ على الأقراص البطيئة، يمكن أن يستغرق تسلسل الاستدعاءات الأربعة من 3 إلى 5 ثوانٍ.</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">قم بدمجها في </font></font><code>-Command</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">كتلة نصية واحدة؛ أو الأفضل من ذلك، قم بإسقاط PowerShell واستدعاء واجهات برمجة التطبيقات الأصلية من Go لقاعدة جدار الحماية (golang.org/x/sys/windows + </font></font><code>INetFwPolicy2</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">COM) </font></font><code>Add-WindowsCapability</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">وعبر واجهة برمجة تطبيقات DISM.</font></font></td>
+</tr>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">W12</font></font></td>
+<td><code>agent/internal/agent/netbird_install.go:55-58</code></td>
+<td><font dir="auto" style="vertical-align: inherit;"></font><code>/S</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">تثبيت </font><font dir="auto" style="vertical-align: inherit;">NSIS الصامت </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">بدون التحقق من توقيع برنامج التثبيت الذي تم تنزيله</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> . في حالة تفعيل هجوم الوسيط (MITM)، </font></font><code>https://pkgs.netbird.io</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">سيتمكن المهاجم من زرع برنامج تثبيت مُخترق يقوم البرنامج بتشغيله كمسؤول.</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">ثبّت قيمة SHA-256 الخاصة بالمثبّت في نظامك الخلفي (وفقًا لإصدار NetBird). مشاكل النظام الخلفي </font></font><code>{url, sha256, signing_thumbprint}</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">. يتحقق الوكيل من قيمة SHA-256 ويتحقق من بصمة توقيع Authenticode مقابل اسم ناشر NetBird المثبّت ( </font></font><code>WireTrustee S.r.l.</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">/ </font></font><code>NetBird GmbH</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">). استخدم </font></font><code>WinVerifyTrust</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">عبر </font></font><code>golang.org/x/sys/windows</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">...</font></font></td>
+</tr>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">W13</font></font></td>
+<td><code>backend/internal/handlers/handlers.go: Connection</code></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يُعيد </font></font><em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">المفتاح الخاص المُفكّك</font></font></em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> إلى المسؤول </font></font><code>/api/clients/:id/connection</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">. يتم تسجيل الدخول إلى سجل النشاط، ولكن المفتاح نفسه ينتقل بتنسيق JSON عبر HTTPS.</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">كحد أدنى: قم بتصفير مخزن JSON المؤقت بعد الكتابة (لن يقوم جامع البيانات المهملة في Go بذلك، ولكن هذا </font></font><code>crypto/subtle</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">أسلوب مناسب). الأفضل: إرجاع رابط تنزيل لمرة واحدة ينتهي صلاحيته خلال 60 ثانية ويُستخدم لمرة واحدة فقط؛ يُقدّم الرابط مرفقًا </font></font><code>application/x-pem-file</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">، وليس JSON أبدًا.</font></font></td>
+</tr>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">W14</font></font></td>
+<td><code>agent/internal/agent/service.go:123-156</code></td>
+<td><code>InstallService</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يحاول النظام أولاً تنفيذ المهمة المجدولة؛ إذا نجح ذلك، يعود النظام؛ وفي حالة الفشل فقط، يلجأ إلى خدمة كارديانوس. لا تتم إعادة محاولة تنفيذ المهمة المجدولة.</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">أضف محاولة إعادة متكررة مع التراجع؛ سجل الاستراتيجية التي نجحت </font></font><code>state.ServiceStrategy</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">حتى يعرف برنامج إلغاء التثبيت ما يجب إزالته.</font></font></td>
+</tr>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">W15</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">جميع استدعاءات HTTP (agent.go، netbird.go، netbird_install.go)</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">لا يوجد إعادة محاولة HTTP/تراجع عند حدوث خطأ 5xx مؤقت؛ مهلة الوكيل الافتراضية البالغة 15 ثانية تعني أن الخادم المشغول خلال يوم الثلاثاء التصحيحي يسقط نصف نبضات القلب.</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">قم بتغليف http.Client بـ </font></font><code>hashicorp/go-retryablehttp</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">or </font></font><code>cenkalti/backoff</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">; أعد محاولة عمليات GET المتكررة بشكل غير مشروط؛ أعد محاولة عمليات POST فقط مع رأس idempotency-key.</font></font></td>
+</tr>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">W16</font></font></td>
+<td><code>agent/internal/agent/agent.go:299-303</code></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">بيانات نبضات القلب فقط </font></font><code>{peer_id, rotated_ok}</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">، لا شيء آخر. لا يمكن للوحة التحكم عرض إصدار نظام التشغيل، أو إصدار الوكيل، أو حالة برنامج NetBird.</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">إضافة </font></font><code>{agent_version, os_version, build_id, netbird_version, install_strategy, last_rotation_at}</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">. من السهل إضافتها الآن، لكن من الصعب تعديلها عند وجود 1000 عميل.</font></font></td>
+</tr>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">W17</font></font></td>
+<td><code>agent/internal/agent/sshd_windows.go:79-82</code></td>
+<td><code>run()</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الاستخدامات </font></font><code>silentCmd(...).CombinedOutput()</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">جيدة، ولكن لا يوجد مهلة زمنية. سيؤدي تعليق PowerShell إلى تعليق التثبيت.</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">استخدم دائمًا </font></font><code>silentCmdCtx</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">مهلة زمنية قدرها 15 ثانية لكل أمر. قم بتطبيق ذلك على كل </font></font><code>run()</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">مكالمة.</font></font></td>
+</tr>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">W18</font></font></td>
+<td><code>backend/internal/handlers/handlers.go: AgentRegister</code></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يقوم التحقق من صحة رمز الإعداد بذلك </font></font><code>WHERE token_hash=$1</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">- وهو عرضة </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">لثغرات التوقيت</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> في مقارنة SHA-256 في PostgreSQL.</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">طول إدخال SHA-256 ثابت، لذا فإن التوقيت ثابت عمليًا، ولكن للاستخدام الصحي الكامل </font></font><code>crypto/subtle.ConstantTimeCompare</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">على جانب التطبيق بعد الجلب بواسطة البادئة المفهرسة.</font></font></td>
+</tr>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">W19</font></font></td>
+<td><code>agent/internal/agent/agent.go:305-308</code></td>
+<td><code>http.NewRequest</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يتجاهل الخطأ ( </font></font><code>req, _ := ...</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">). إذا كان غير صحيح (لا ينبغي أن يحدث ذلك، ولكن) ← محاولة الوصول إلى مؤشر فارغ.</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">تعامل مع كل خطأ بشكل صريح. </font></font><code>errcheck</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يجب أن يكون برنامج التحقق من الأخطاء (linter) موجودًا في نظام التكامل المستمر (CI).</font></font></td>
+</tr>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">W20</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">لا توجد قناة تحديث</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">لا يملك البرنامج الوكيل أي وسيلة لتحديث نفسه. عند وجود 1000 مضيف، يصبح التحديث الذاتي ضروريًا.</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">أضف </font></font><code>/api/agent/update</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">عملية إعادة التنزيل </font></font><code>{version, url, sha256, signature}</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">؛ يقوم الوكيل بتنزيل الملفات إلى مجلد مؤقت، والتحقق منها، واستبدالها بشكل ذري، وإعادة تشغيلها عبر الخدمة. هذا هو أكبر خطر تشغيلي تواجهه حاليًا.</font></font></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">هـ. المعايير الدولية وأفضل الممارسات - تحليل الفجوات + خارطة طريق ذات أولوية</font></font></h2>
+<h3><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">E.1 - مقارنة شبكات VPN الشبكية: NetBird مقابل WireGuard مقابل Tailscale</font></font></h3>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">اختيارك (الخطة المجانية لخدمة NetBird Cloud) له ما يبرره. إليك المقارنة الموضوعية:</font></font></p>
+<ul>
+<li><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">WireGuard وحده</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> : تشفير من فئة النواة، لكن بدون أي نظام إدارة. ستحتاج إلى بناء NetBird بنفسك.</font></font></li>
+<li><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">Tailscale</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> : يتميز بأفضل تجربة مستخدم، لكن الخطة المجانية محدودة بثلاثة مستخدمين لكل 100 جهاز، كما أن منسق النظام مغلق المصدر. تبلغ التكلفة عند استخدام 1000 جهاز حوالي 5000 دولار أمريكي سنويًا.</font></font></li>
+<li><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">NetBird</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> : مفتوح المصدر، قابل للاستضافة الذاتية، طبقة مجانية (5 مستخدمين)، واجهة برمجة تطبيقات كاملة لأتمتة قوائم التحكم بالوصول (ACL). نقطة ضعف جوهرية واحدة: الطبقة السحابية المجانية أقدم من الإصدار 0.61 وتفتقر </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">إلى </font></font><code>protocol:"ssh"</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">قوائم التحكم بالوصول الخاصة بمفاتيح الإعداد</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ([دروسك 2026-06-05]) - وهذا تحديدًا سبب اختيارك الصحيح لـ OpenSSH عبر شبكة NetBird كمسار أساسي.</font></font></li>
+<li><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">مصادر مقارنة الشبكات: defguard.net </font></font><a href="https://defguard.net/blog/defguard-vs-netbird/"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">25</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ، wz-it.com </font></font><a href="https://wz-it.com/en/blog/netbird-vs-zerotier-vpn-alternative/"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">26</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ، netbird.io/knowledge-hub </font></font><a href="https://netbird.io/knowledge-hub/top-5-tailscale-alternatives"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">27</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> .</font></font></li>
+</ul>
+<p><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">التوافق مع المعايير</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> : تتوافق أنفاق NetBird WireGuard مع متطلبات التشفير الخاصة بمعيار NIST SP 800-77 Rev 1 (إرشادات IPsec/VPN) (X25519، ChaCha20-Poly1305). ✅</font></font></p>
+<p><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">ثغرة</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> : </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">لا يوجد تكامل بين تسجيل الدخول الموحد (SSO) وموفر الهوية (IdP)</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> في تصميمك. تتطلب المعايير (NIST 800-207 Zero Trust، SOC 2 CC6.1) هوية موحدة للوصول الإداري. </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">اقتراح للتطوير: استخدام بروتوكول OIDC في Microsoft Entra / Google Workspace للمسؤولين</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ، مع الإبقاء على رمز JWT الخاص بالوكيل للأجهزة.</font></font></p>
+<h3><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">E.2 — دورة حياة مفتاح SSH على نطاق واسع (NIST SP 800-57 + NIST IR 7966)</font></font></h3>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يحدد معيار NIST IR 7966 ("أمن إدارة الوصول التفاعلية والآلية باستخدام SSH") المعيار المطلوب. مقارنة الوضع الحالي بالوضع المستهدف:</font></font></p>
+<table>
+<thead>
+<tr>
+<th><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يتحكم</font></font></th>
+<th><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">وضعك الحالي</font></font></th>
+<th><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">هدف</font></font></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">جرد</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">✅ قاعدة البيانات تحتوي على جميع المفاتيح</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">✅</font></font></td>
+</tr>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">تناوب</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">✅ تعمل آلة الحالة</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">✅</font></font></td>
+</tr>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">إبطال</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">⚠️ حذف الصف (W8)</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">حذف مؤقت + تدقيق revoked_at</font></font></td>
+</tr>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">مراجعة</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">⚠️ جدول سجل النشاط؛ لا يوجد ثبات في الجدول</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">تخزين WORM / سلسلة الإضافة فقط</font></font></td>
+</tr>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الخوارزمية</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">✅ ed25519 ( </font></font><code>keygen.go:21</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">)</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">✅ — يفي بمعيار NIST 800-186</font></font></td>
+</tr>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">تخزين</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">✅ AES-256-GCM</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">ترقية KDF إلى HKDF (W1)</font></font></td>
+</tr>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">تاريخ الانتهاء</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">❌ لا تنتهي صلاحية المفاتيح أبدًا</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">إضافة </font></font><code>expires_at</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">عمود، تطبيق</font></font></td>
+</tr>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">اكتشاف</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">✅ مركزي</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">✅</font></font></td>
+</tr>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">منع التوسع العمراني العشوائي</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">✅ تم وضع علامة + تم استبدالها بالعلامة</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">المطابقة حسب الجسم (W9)</font></font></td>
+</tr>
+</tbody>
+</table>
+<h3><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">E.3 — تعزيز أمان برنامج تثبيت ويندوز</font></font></h3>
+<table>
+<thead>
+<tr>
+<th><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">معيار</font></font></th>
+<th><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">أنت</font></font></th>
+<th><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">فجوة</font></font></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">موقع من قبل Authenticode PE</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">تم التوقيع ذاتياً اليوم (وفقاً لملف HANDOFF.md)</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">اشترِ شهادة OV أو (الأفضل) </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">خدمة التوقيع الموثوق من Azure، بتكلفة تقريبية 10 دولارات شهريًا</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> (learn.microsoft.com </font></font><a href="https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/smartscreen-reputation"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">28</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> )</font></font></td>
+</tr>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">EV مقابل OV</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">غير متوفر</font></font></td>
+<td><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">لم يعد نظام EV يتجاوز ميزة SmartScreen</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> منذ عام 2023 (Microsoft Learn </font></font><a href="https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/smartscreen-reputation"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">28</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ) — </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">لا تدفع مقابل نظام EV</font></font></strong></td>
+</tr>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">مقارنة بين برنامج MSI وبرنامج EXE لتثبيت الملفات</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">إملف تنفيذى</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">إنشاء ملف WiX MSI للنشر الجماعي لـ GPO/SCCM/Intune - مطلوب على نطاق مزود خدمات الإدارة</font></font></td>
+</tr>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">بيان UAC</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">ضمنيًا عبر المشي</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">أضف </font></font><code>requireAdministrator</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">بيانًا صريحًا</font></font></td>
+</tr>
+<tr>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">مناسب لأنظمة التعرف التلقائي على الكلام</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">مجهول</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">مسار استثناء برنامج Document Defender:</font></font><code>C:\Program Files\Motech\motech-connect.exe</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">التوقيع الموثوق من Azure</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> (المعروف سابقًا باسم التوقيع الموثوق، ويُسمى الآن "توقيع القطع الأثرية"): حوالي 10 دولارات شهريًا، لا يتطلب رمزًا ماديًا، ويتكامل مع GitHub Actions، ويتم التحقق من الهوية بواسطة Microsoft. يدعم النظام التشغيلي من Linux عبر TrustedSigningAction الرسمي </font></font><a href="https://github.com/Azure/trusted-signing-action"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">29</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> وأيضًا عبر </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">jsign</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> (Stack Overflow </font></font><a href="https://stackoverflow.com/questions/78790089/how-can-i-invoke-azure-trusted-signing-from-a-linux-os"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">30</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ). التحقق من الهوية: بطاقة هوية حكومية + فاتورة خدمات (hendrik-erz.de </font></font><a href="https://hendrik-erz.de/post/code-signing-with-azure-trusted-signing-on-github-actions"><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">31</font></font></a><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ). </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">هذه هي الخطوة ذات أعلى عائد استثمار يمكنك القيام بها لـ SmartScreen</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> - ولكن السمعة لا تزال تتراكم مع التنزيلات، ولا يتم تجاوزها على الفور.</font></font></p>
+<h3><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">هـ.4 - انعدام الثقة / NIST SP 800-207</font></font></h3>
+<ul>
+<li><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">✅ هوية الجهاز (agent_token، peer_id)</font></font></li>
+<li><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">✅ تقسيم الشبكة إلى أجزاء صغيرة (شبكة NetBird الشبكية، وليست شبكة محلية مسطحة)</font></font></li>
+<li><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">⚠️ التحقق المستمر (يتم ذلك عن طريق نبضات القلب؛ لا يوجد فحص لوضعية الجهاز - لا يوجد برنامج مكافحة فيروسات، أو BitLocker، أو مستوى تصحيح)</font></font></li>
+<li><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">❌ الوصول في الوقت المناسب (يحصل المسؤول على رمز JWT دائم؛ لا يوجد كسر للزجاج مع الموافقة)</font></font></li>
+<li><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">❌ إدارة الوصول المميز (لا يتم تسجيل جلسات SSH الخاصة بالمشغل)</font></font></li>
+</ul>
+<h3><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">E.5 — تسجيل عمليات التدقيق (توقعات SOC 2 / ISO 27001)</font></font></h3>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">لديك الآن </font></font><code>activity_log</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">أساس متين يتضمن: الممثل، والإجراء، ومعرّف العميل، والبيانات الوصفية، وتاريخ الإنشاء </font></font><code>handlers.go:84-90</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">. لاجتياز اختبار SOC 2 من النوع الثاني:</font></font></p>
+<ol>
+<li><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">عدم قابلية التغيير</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> : سجل إلى وحدة تخزين WORM للإضافة فقط (قفل كائن S3، أو </font></font><code>INSERT-ONLY</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">دور PostgreSQL).</font></font></li>
+<li><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">مدة الاحتفاظ</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> : 12 شهرًا كحد أدنى (قابلة للتكوين لكل مستأجر).</font></font></li>
+<li><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">السلامة</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> : يتم استخدام سلسلة التجزئة لكل صف ( </font></font><code>prev_hash || row_hash</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">) بحيث يمكن اكتشاف التلاعب.</font></font></li>
+<li><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">التصدير</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> : </font></font><code>/api/audit/export?from=&amp;to=</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">إرجاع JSON أو CEF موقعة لنظام SIEM.</font></font></li>
+<li><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يُسجّل سطح التغطية</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> كل عملية نسخ لمعلومات الاتصال، وكل عملية وصول إلى المفتاح الخاص، وكل عملية تعطيل/حذف، وكل عملية تسجيل دخول وخروج. يتم تسجيل معظم عمليات تسجيل الخروج، باستثناء عمليات تسجيل الدخول الفاشلة.</font></font></li>
+</ol>
+<h3><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">هـ.6 — خارطة طريق ذات أولوية لمدة 90 يومًا (نفذ بهذا الترتيب)</font></font></h3>
+<table>
+<thead>
+<tr>
+<th><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">أولوية</font></font></th>
+<th><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">غرض</font></font></th>
+<th><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">جهد</font></font></th>
+<th><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">انخفاض المخاطر</font></font></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">P0</font></font></strong></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">قم بإنشاء بيئة اختبار من لينكس إلى ويندوز (الخيار 1 أو 2 في القسم ج). توقف عن استخدام نفق Cloudflare السريع.</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يوم واحد</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يقضي على فئة الإنذارات الكاذبة "تعطل ملف exe" بالكامل؛ ويفتح جميع الأعمال المستقبلية.</font></font></td>
+</tr>
+<tr>
+<td><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">P0</font></font></strong></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">قم ببناء كلا </font></font><code>windowsgui</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الإصدارين </font></font><code>console</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">من الوكيل؛ معالجات قياسية فارغة في </font></font><code>silentCmd</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">؛ التبديل إلى MSI لمثبت NetBird.</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يوم واحد</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يسد آخر فجوات "وميض النافذة".</font></font></td>
+</tr>
+<tr>
+<td><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">P0</font></font></strong></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">إصلاح ACL ← قائم على SID (W5 #1). يضيف ميزة أمان اللغة العربية.</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">ساعة واحدة</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">لا يعمل حالياً على نظام ويندوز المحلي.</font></font></td>
+</tr>
+<tr>
+<td><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">P1</font></font></strong></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">التحقق المسبق من مفتاح إعداد NetBird على الواجهة الخلفية قبل إرساله إلى الوكيل؛ إزالة الاعتماد على مهلة 45 ثانية كوضع فشل أساسي (المشكلة 2).</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يومين</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يزيل السبب الجذري للتثبيت والتوقف.</font></font></td>
+</tr>
+<tr>
+<td><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">P1</font></font></strong></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">7 نقاط </font></font><code>VerifySSHReady</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">(المسألة 3).</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يوم واحد</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يقضي على حالات الفشل الصامتة "المثبتة ولكن غير القابلة للوصول".</font></font></td>
+</tr>
+<tr>
+<td><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">P1</font></font></strong></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">قم بتحويل JWT إلى EdDSA + </font></font><code>kid</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">رأس + جدول تدوير المفاتيح (W2، W3).</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">3 أيام</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">لم يعد الكشف عن سر واحد يعني الكشف عن كل شيء.</font></font></td>
+</tr>
+<tr>
+<td><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">P1</font></font></strong></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">مفتاح AES مشتق من HKDF مع ملح لكل سجل + عمود الإصدار (W1).</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يومين</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يصبح نظام تدوير المفاتيح الرئيسية فعالاً، وليس كارثياً.</font></font></td>
+</tr>
+<tr>
+<td><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">P2</font></font></strong></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">التوقيع باستخدام Authenticode عبر Azure Trusted Signing في كل إصدار (E.3).</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">إعداد لمدة يوم واحد + التحقق من هوية مايكروسوفت من أسبوع إلى ثلاثة أسابيع</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">التعرض لتقنية SmartScreen في اليوم الأول.</font></font></td>
+</tr>
+<tr>
+<td><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">P2</font></font></strong></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">برنامج تثبيت WiX MSI مع بيان UAC + وثيقة نشر GPO/Intune (E.3).</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">أسبوع واحد</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">مطلوب لتنفيذ المشروع على نطاق واسع.</font></font></td>
+</tr>
+<tr>
+<td><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">P2</font></font></strong></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الحذف الناعم + سجل المفاتيح (W8)؛ سلسلة تجزئة سجل التدقيق (E.5).</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">يومين</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">جاهزية مركز عمليات الأمن 2.</font></font></td>
+</tr>
+<tr>
+<td><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">P2</font></font></strong></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">قناة التحديث الذاتي للوكيل (W20).</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">أسبوع واحد</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">أكبر فجوة تشغيلية اليوم.</font></font></td>
+</tr>
+<tr>
+<td><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">P3</font></font></strong></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">مباشر </font></font><code>golang.org/x/sys/windows/svc</code><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">بدلاً من kardianos؛ التحقق الثنائي الموقّع من برنامج تثبيت NetBird (W12)؛ نقاط نهاية المصادقة ذات الحد الأقصى للمعدل (W6)؛ السجلات المنظمة (W7).</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">أسبوع واحد مجتمع</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الدفاع المتعمق.</font></font></td>
+</tr>
+<tr>
+<td><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">P3</font></font></strong></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">Microsoft Entra / Google OIDC SSO لتسجيل دخول المسؤول (E.1).</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">أسبوعين</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">مطلوب لعملاء المؤسسات.</font></font></td>
+</tr>
+<tr>
+<td><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">P3</font></font></strong></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">وضع الجهاز في نبضات القلب (حالة AV، BitLocker، مستوى تصحيح نظام التشغيل) (E.4).</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">أسبوع واحد</font></font></td>
+<td><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">التوافق مع مبدأ انعدام الثقة.</font></font></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">التقييم الختامي</font></font></h2>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">هذه منصة وصول عن بُعد </font></font><em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">فائقة الجودة، تتفوق على المتوسط، مُصممة خصيصًا</font></font></em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> لمزودي خدمات الإدارة (MSP): بنيتها سليمة، وقواعد بيانات الوصول المُدارة (ADRs) دقيقة، وآلية تدوير الحالة مُختبرة، وتحصين الجلسة 0 مُحكم، ونمط التوليد الصامت مُعتمد. كانت معظم حالات الفشل التي واجهتها ناتجة عن خلل في بيئة </font></font><strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">الاختبار</font></font></strong><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ، وليست عيوبًا برمجية - فبرنامجك أكثر متانة من بيئة الاختبار. أصلح بيئة الاختبار (القسم ج)، وحسّن من إجراءات التشفير الأساسية (W1-W3، W12)، واشترِ خدمة التوقيع الموثوق، وستحصل على منتج MSP موثوق يدعم 1000 مضيف. الانتقال من 3 إلى 1000 عميل يتطلب </font></font><em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">تحسينًا تشغيليًا</font></font></em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;"> ، وليس إعادة تصميم البنية.</font></font></p>
+<p><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">مراجعة من </font></font><em><font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">قبل كبير مهندسي الأنظمة/الأمن، 9 يونيو 2026</font></font></em></p>
+
+            </div>
+
+            <!-- Gallery (Optional) -->
+            
+
+            <!-- References (Optional) -->
+            
+        </article>
+
+        <!--
+            Note: Footer with branding ("Generated by GenSpark") was removed
+            per user requirement to provide a clean export without attribution.
+            This allows users to share exported Sparks without platform branding.
+        -->
+    </div>
+
+    <!-- Code Highlighting JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" integrity="sha512-D9gUyxqja7hBtkWpPWGt9wfbfaMGVt9gnyCvYa+jojwwPHLCzUm5i8rpk7vD7wNee9bA35eYIjobYPaQuKS1MQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>hljs.highlightAll();</script><div id="goog-gt-tt" class="VIpgJd-yAWNEb-L7lbkb skiptranslate" style="border-radius: 12px; margin: 0 0 0 -23px; padding: 0; font-family: &#39;Google Sans&#39;, Arial, sans-serif;" data-id=""><div id="goog-gt-vt" class="VIpgJd-yAWNEb-hvhgNd"><div class="VIpgJd-yAWNEb-hvhgNd-Ud7fr"><img src="./مراجعة معمقة للهندسة المعمارية والأمن - منصة الوصول عن بعد من موتك_files/24px.svg" width="24" height="24" alt=""><div class=" VIpgJd-yAWNEb-hvhgNd-IuizWc-SIsrTd " dir="rtl">النص الأصلي</div></div><div class="VIpgJd-yAWNEb-hvhgNd-k77Iif"><div id="goog-gt-original-text" class="VIpgJd-yAWNEb-nVMfcd-fmcmS VIpgJd-yAWNEb-hvhgNd-axAV1"></div></div><div class="VIpgJd-yAWNEb-hvhgNd-N7Eqid rtl"><div class="VIpgJd-yAWNEb-hvhgNd-N7Eqid-B7I4Od rtl" dir="rtl"><div class="VIpgJd-yAWNEb-hvhgNd-UTujCb">تقييم هذه الترجمة</div><div class="VIpgJd-yAWNEb-hvhgNd-eO9mKe">سيتم استخدام ملاحظاتك وآرائك للمساعدة في تحسين "ترجمة Google".</div></div><div class="VIpgJd-yAWNEb-hvhgNd-xgov5 rtl"><button id="goog-gt-thumbDownButton" type="button" class="VIpgJd-yAWNEb-hvhgNd-bgm6sf" title="ترجمة سيئة" aria-label="ترجمة سيئة" aria-pressed="false"><span id="goog-gt-thumbDownIcon"><svg width="24" height="24" viewBox="0 0 24 24" focusable="false" class="VIpgJd-yAWNEb-hvhgNd-THI6Vb NMm5M"><path d="M3 17h6.31l-.95 4.57-.03.32c0 .41.17.79.44 1.06L9.83 24s7.09-6.85 7.17-7h5V4H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05c-.09.23-.14.47-.14.73v2c0 1.1.9 2 2 2zM17 6h3v9h-3V6zM3 13l3-7h9v10l-4.34 4.34L12 15H3v-2z"></path></svg></span><span id="goog-gt-thumbDownIconFilled"><svg width="24" height="24" viewBox="0 0 24 24" focusable="false" class="VIpgJd-yAWNEb-hvhgNd-THI6Vb NMm5M"><path d="M3 17h6.31l-.95 4.57-.03.32c0 .41.17.79.44 1.06L9.83 24s7.09-6.85 7.17-7V4H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05c-.09.23-.14.47-.14.73v2c0 1.1.9 2 2 2zm16 0h4V4h-4v13z"></path></svg></span></button><button id="goog-gt-thumbUpButton" type="button" class="VIpgJd-yAWNEb-hvhgNd-bgm6sf" title="ترجمة جيدة" aria-label="ترجمة جيدة" aria-pressed="false"><span id="goog-gt-thumbUpIcon"><svg width="24" height="24" viewBox="0 0 24 24" focusable="false" class="VIpgJd-yAWNEb-hvhgNd-THI6Vb NMm5M"><path d="M21 7h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 0S7.08 6.85 7 7H2v13h16c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73V9c0-1.1-.9-2-2-2zM7 18H4V9h3v9zm14-7l-3 7H9V8l4.34-4.34L12 9h9v2z"></path></svg></span><span id="goog-gt-thumbUpIconFilled"><svg width="24" height="24" viewBox="0 0 24 24" focusable="false" class="VIpgJd-yAWNEb-hvhgNd-THI6Vb NMm5M"><path d="M21 7h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 0S7.08 6.85 7 7v13h11c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73V9c0-1.1-.9-2-2-2zM5 7H1v13h4V7z"></path></svg></span></button></div></div><div id="goog-gt-votingHiddenPane" class="VIpgJd-yAWNEb-hvhgNd-aXYTce"><form id="goog-gt-votingForm" action="https://translate.googleapis.com/translate_voting?client=te_lib" method="post" target="votingFrame" class="VIpgJd-yAWNEb-hvhgNd-aXYTce"><input type="text" name="sl" id="goog-gt-votingInputSrcLang"><input type="text" name="tl" id="goog-gt-votingInputTrgLang"><input type="text" name="query" id="goog-gt-votingInputSrcText"><input type="text" name="gtrans" id="goog-gt-votingInputTrgText"><input type="text" name="vote" id="goog-gt-votingInputVote"></form><iframe name="votingFrame" frameborder="0" src="./مراجعة معمقة للهندسة المعمارية والأمن - منصة الوصول عن بعد من موتك_files/saved_resource.html"></iframe></div></div></div>
+
+
+</body></html>
