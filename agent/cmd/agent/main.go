@@ -19,6 +19,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"time"
 
 	"motech-platform/agent/internal/agent"
 )
@@ -65,33 +66,51 @@ func main() {
 		// Sequential install: each step runs, reports, and ALWAYS continues to
 		// the next — the install never stalls mid-way. Non-fatal steps log a
 		// warning but do not abort, so we always reach the final verification.
-		step := func(n int, name string, fn func() error) {
-			fmt.Printf("[%d/5] %s ...\n", n, name)
-			if err := fn(); err != nil {
-				fmt.Printf("      ⚠ %s: %v (نُكمل)\n", name, err)
-			} else {
-				fmt.Printf("      ✓ %s\n", name)
+		// Each non-fatal step retries up to 3x; if it still fails we record a
+		// warning but CONTINUE (the install never stalls). Returns ok flag.
+		step := func(n, total int, name string, fn func() error) bool {
+			fmt.Printf("[%d/%d] %s ...\n", n, total, name)
+			var err error
+			for attempt := 1; attempt <= 3; attempt++ {
+				if err = fn(); err == nil {
+					fmt.Printf("      ✓ %s\n", name)
+					return true
+				}
+				if attempt < 3 {
+					fmt.Printf("      … محاولة %d فشلت (%v) — إعادة\n", attempt, err)
+					time.Sleep(time.Duration(attempt*3) * time.Second)
+				}
 			}
+			fmt.Printf("      ⚠ %s: %v (نُكمل)\n", name, err)
+			return false
 		}
 
+		const total = 6
 		// Step 1 is the only hard requirement: without a valid token there is
-		// nothing to install, so this one aborts on failure.
-		fmt.Println("[1/5] التسجيل بالرمز ...")
+		// nothing to install, so this one aborts on failure (after its own retries).
+		fmt.Printf("[1/%d] التسجيل بالرمز ...\n", total)
 		if err := ag.Register(*token); err != nil {
-			log.Fatalf("      ✗ فشل التسجيل: %v", err)
+			fmt.Printf("      ✗ فشل التسجيل: %v\n", err)
+			fmt.Println("\n❌ فشل التثبيت عند التسجيل. تحقّق من الرمز والاتصال ثم أعد المحاولة.")
+			os.Exit(1)
 		}
 		fmt.Println("      ✓ تم التسجيل")
 
-		step(2, "الانضمام لشبكة NetBird", ag.JoinNetbird)
-		step(3, "تثبيت مفتاح SSH وتشغيل خادم SSH", ag.SetupAccess)
-		step(4, "تثبيت الخدمة في الخلفية", ag.InstallService)
+		step(2, total, "الانضمام لشبكة NetBird + تفعيل SSH المدمج", ag.JoinNetbird)
+		step(3, total, "تهيئة الوصول (SSH/المفتاح)", ag.SetupAccess)
+		step(4, total, "تثبيت الخدمة في الخلفية", ag.InstallService)
+		// Step 5: first heartbeat — pushes status + key + machine info to the dashboard.
+		step(5, total, "رفع الحالة للواجهة (heartbeat)", func() error {
+			_, e := ag.Heartbeat()
+			return e
+		})
 
-		// Step 5: verify everything is actually ready before declaring success.
-		fmt.Println("[5/5] التحقق من الجاهزية ...")
+		// Step 6: verify everything is actually ready before declaring success.
+		fmt.Printf("[6/%d] التحقق من الجاهزية ...\n", total)
 		msg, verr := agent.VerifySSHReady(ag.InstalledPubKey())
 		if verr != nil {
 			fmt.Printf("      ⚠ %s\n", msg)
-			fmt.Println("\n⚠ اكتمل التثبيت مع تنبيهات — راجع الرسائل أعلاه.")
+			fmt.Println("\n⚠ اكتمل التثبيت مع تنبيهات — الجهاز مسجّل لكن راجع الرسائل أعلاه.")
 		} else {
 			fmt.Printf("      ✓ %s\n", msg)
 			fmt.Println("\n✅ تم التثبيت بنجاح — الجهاز متصل وجاهز.")

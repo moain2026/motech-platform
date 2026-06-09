@@ -112,9 +112,26 @@ func (s *State) save() error {
 // Register exchanges a one-time setup token for an agent token + NetBird key.
 func (a *Agent) Register(token string) error {
 	body, _ := json.Marshal(map[string]string{"token": token})
-	resp, err := a.http.Post(a.Server+"/api/agent/register", "application/json", bytes.NewReader(body))
+	// Retry with backoff so a weak/intermittent connection doesn't fail the
+	// install on the first network blip. Up to 5 attempts: 2s,4s,8s,16s.
+	var resp *http.Response
+	var err error
+	for attempt := 1; attempt <= 5; attempt++ {
+		resp, err = a.http.Post(a.Server+"/api/agent/register", "application/json", bytes.NewReader(body))
+		if err == nil && resp.StatusCode < 500 {
+			break // success or a definitive client error (e.g. bad token) — don't retry
+		}
+		if resp != nil {
+			resp.Body.Close()
+		}
+		if attempt < 5 {
+			wait := time.Duration(1<<attempt) * time.Second
+			log.Printf("register attempt %d failed (%v), retrying in %s", attempt, err, wait)
+			time.Sleep(wait)
+		}
+	}
 	if err != nil {
-		return err
+		return fmt.Errorf("فشل الاتصال بالخادم بعد 5 محاولات: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
@@ -173,7 +190,13 @@ func (a *Agent) JoinNetbird() error {
 	cancelInstall()
 	time.Sleep(2 * time.Second)
 
-	args := []string{"up", "--setup-key", a.state.NetbirdKey}
+	// Enable NetBird's BUILT-IN SSH server (--allow-server-ssh): SSH arrives on
+	// port 22 and is re-routed internally to 22022 over the mesh. This avoids
+	// installing Windows OpenSSH + administrators_authorized_keys ACL + firewall
+	// (the classic failure source). --disable-ssh-auth uses machine-identity
+	// (NetBird ACLs) instead of interactive JWT/OIDC, so install stays headless.
+	args := []string{"up", "--setup-key", a.state.NetbirdKey,
+		"--allow-server-ssh", "--disable-ssh-auth"}
 	if a.state.NetbirdAPIURL != "" {
 		args = append(args, "--management-url", a.state.NetbirdAPIURL)
 	}
@@ -188,6 +211,23 @@ func (a *Agent) JoinNetbird() error {
 		return fmt.Errorf("netbird up تجاوز المهلة (45s) — تحقق من setup-key/الاتصال")
 	}
 	if err != nil {
+		// Older clients may not know --allow-server-ssh/--disable-ssh-auth.
+		// Retry once without them so the join still succeeds (OpenSSH fallback).
+		if strings.Contains(string(out), "unknown flag") || strings.Contains(string(out), "unknown shorthand") {
+			log.Printf("netbird: ssh flags unsupported, retrying basic up")
+			basic := []string{"up", "--setup-key", a.state.NetbirdKey}
+			if a.state.NetbirdAPIURL != "" {
+				basic = append(basic, "--management-url", a.state.NetbirdAPIURL)
+			}
+			ctx2, c2 := context.WithTimeout(context.Background(), 45*time.Second)
+			defer c2()
+			out2, err2 := silentCmdCtx(ctx2, path, basic...).CombinedOutput()
+			log.Printf("netbird up (basic): %s", string(out2))
+			if err2 != nil {
+				return fmt.Errorf("netbird up: %w (%s)", err2, string(out2))
+			}
+			return nil
+		}
 		return fmt.Errorf("netbird up: %w (%s)", err, string(out))
 	}
 	return nil
