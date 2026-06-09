@@ -121,11 +121,28 @@ func (c *Client) EnableSSH(peerIP string) error {
 	if c.mock || peerIP == "" {
 		return nil
 	}
-	id, err := c.peerIDByIP(peerIP)
-	if err != nil || id == "" {
+	// Fetch the peer (need its id + current name; NetBird's PUT /peers/{id}
+	// requires the name field or it silently no-ops).
+	var peers []struct {
+		ID   string `json:"id"`
+		IP   string `json:"ip"`
+		Name string `json:"name"`
+	}
+	if err := c.do(http.MethodGet, "/api/peers", nil, &peers); err != nil {
 		return err
 	}
+	var id, name string
+	for _, p := range peers {
+		if p.IP == peerIP {
+			id, name = p.ID, p.Name
+			break
+		}
+	}
+	if id == "" {
+		return nil // peer not found yet
+	}
 	body := map[string]any{
+		"name":                          name,
 		"ssh_enabled":                   true,
 		"login_expiration_enabled":      false,
 		"inactivity_expiration_enabled": false,
