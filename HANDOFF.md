@@ -87,3 +87,29 @@ cd agent && GOOS=windows GOARCH=amd64 go build -o motech-connect.exe ./cmd/agent
 - NetBird Cloud free لا يدعم `protocol:"ssh"` → نستخدم OpenSSH كأساس، NetBird SSH تحسين مستقبلي.
 - جهاز العميل قد يحجب SYSTEM scheduled tasks → الـ agent يعمل كـ INTERACTIVE USER.
 - مجلدات `C:\ProgramData` التي تظهر داخل الريبو = لوقات اختبار ويندوز كُتبت بالخطأ على لينكس — آمنة للحذف.
+
+---
+
+## 🔄 تحديث 2026-06-09 (مهم — اقرأه عند استئناف العمل)
+
+### المعمارية الحالية: NetBird = مصدر الحقيقة (ADR-A5)
+- **الوصول الأساسي = NetBird SSH المدمج** (مو OpenSSH+مفتاح). الأمر: `netbird ssh --strict-host-key-checking=false --user <user> <netbird-ip> '<powershell>'`.
+- التثبيت يفعّله: `netbird up --allow-server-ssh --disable-ssh-auth`. الباكند يفعّل ssh_enabled تلقائياً + يرسل apply_ssh ليعيد الـ agent الـ up (bug 2816).
+- **التعطيل/الحذف** = يحذف الـ peer من NetBird (يقطع الوصول فعلياً). تطبيق Motech = طبقة وصول/عرض/توزيع مفاتيح.
+
+### الحالة الحالية (مُختبَر حقيقياً على ويندوز)
+- ✅ التثبيت بنقرة (Alabbasi_soft.exe، GUI) → register → NetBird + SSH المدمج تلقائي → online بالداشبورد.
+- ✅ AI agent يدخل أي جهاز عميل وينفّذ أوامر عبر `netbird ssh`. مُثبَت على جهازين مختلفين.
+- ✅ بيئة اختبار ويندوز: GitHub Actions (`gh workflow run win-e2e.yml -f mode=full -f setup_token=...`).
+
+### كيف تختبر (من بيئة لينكس بلا ويندوز)
+1. أنشئ عميل عبر API → setup_token.
+2. شغّل: `gh workflow run win-e2e.yml -R moain2026/motech-platform -f mode=full -f setup_token=<TOK>`.
+3. `gh run download <id>` → اقرأ register-out.txt + netbird-diag.txt + agent.log.
+
+### مفاتيح/أسرار
+- NetBird PAT في backend/.env (NETBIRD_API_TOKEN). admin الداشبورد: moain2026@gmail.com.
+- مفتاح SSH خاص بي (للوصول التقليدي الاحتياطي): ~/.ssh/motech_claw_key على VM.
+
+### Migrations: 003 login_user, 004 ssh_enabled, 005 ssh_applied.
+### تفاصيل كاملة: planning/PROGRESS.md (2026-06-09) + Memory_agent-one/ في الـ workspace.

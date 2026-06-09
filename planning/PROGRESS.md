@@ -192,3 +192,26 @@
 - عملاء آخرون (احمد مناجي، علي علي، 134ae688) **online في اللوحة لكن peer_id فاضي + غير موجودين في NetBird peers** → الوكيل يبلّغ heartbeat بس ما انضم لـ NetBird فعليًا ⇒ اللوحة تعرض <netbird-ip-pending>. (نمط معروف من الذاكرة: peer_id يجي فاضي من parse الوكيل.)
 - SSH للـمهند: التفاوض الكامل ينجح (KEX+NEWKEYS+service_accept ssh-userauth، خادم OpenSSH_for_Windows_9.5) ثم **Connection reset port 22 قبل بدء publickey auth**.
   - نمط كلاسيكي لـ OpenSSH-Windows مع administrators_authorized_keys: صلاحيات/ملكية الملف خاطئة (لازم يملكه Administrators+SYSTEM فقط، بلا وراثة) → sshd يقطع فورًا. أو sshd يكرش عند قراءته. المشكلة على جهاز مهند، مو كودنا/الشبكة.
+
+## 2026-06-09 (Session — تطوير مكثّف + اختبار حقيقي على أجهزة ويندوز)
+
+### تغييرات الكود (كلها مدفوعة)
+- **online/offline**: `effectiveStatus()` (عتبة 60s) + دمج حالة NetBird الحيّة (`PeerLiveStatus`) في ListClients — NetBird مصدر الحقيقة للوصول.
+- **NetBird SSH المدمج (الأساس)**: `JoinNetbird` يضيف `--allow-server-ssh --disable-ssh-auth` (machine-identity، بلا OpenSSH/ACL/firewall). fallback للنسخ القديمة.
+- **auto-enable SSH**: heartbeat → الباكند يفعّل ssh_enabled عبر NetBird API أول مرة (migration 004). + يرسل `apply_ssh` → الـ agent يعمل `netbird down && up --allow-server-ssh` (migration 005, bug 2816). مُثبَت CI: SSH Server Enabled.
+- **التثبيت 6 مراحل** retry/self-heal + رسالة "أعد المحاولة"؛ register فيه retry+backoff (نت ضعيف).
+- **scheduled task بالـ SID** (يحل "No mapping between account names and SIDs" على ويندوز عربي).
+- **login_user**: الـ agent يبلّغه؛ يُستخدم في معلومات الاتصال (migration 003).
+- **GUI exe headless run**: cmd/gui يدعم run/register بلا نافذة → scheduled task يبقي heartbeat حيّ (الداشبورد يطابق الواقع).
+- **معلومات الاتصال**: `netbird ssh` المدمج أساسي + المستخدم الحقيقي + `agent_prompt` (برومبت كامل لأي وكيل AI). OpenSSH+key احتياطي.
+- **التعطيل/الحذف**: يحذف الـ peer من NetBird فعلياً + يسجّل الفشل (كان يبتلعه → ثغرة: الوصول يبقى مفتوح بعد التعطيل). ADR-A5: NetBird = الإنفاذ.
+- **الداشبورد**: Tailwind+Alpine محلي (/vendor) بدل CDN (كان سبب أزرار ميتة على شبكات تحجب CDN) + صوت/اهتزاز عند النسخ + زر "نسخ للوكيل".
+- **الملف للتحميل**: Alabbasi_soft.exe (GUI، باسم الشعار). build.sh ينشره.
+
+### الاختبار (حقيقي)
+- بيئة اختبار ويندوز مجانية: GitHub Actions windows-latest (.github/workflows/win-e2e.yml، modes build/register/full). NetBird ينضم + SSH ينشط — كله مُثبَت على CI.
+- **أجهزة حقيقية**: اتصلت بـ MoTech (Moain) + طرفي-غليل (alabb) عبر NetBird SSH ونفّذت أوامر (أنشأت ملف، حذفت تطبيق). جهازان مختلفان = peers مستقلة.
+- **اكتشاف**: الـ exe لم يكن يكرش سابقاً — كان harness الاختبار (نفق Cloudflare + ssh→PowerShell→cmd). الكود سليم.
+
+### تقارير بحث (في planning/)
+- DEEP_RESEARCH_REPORT (معماري/أمني، W1-W20)، NETBIRD_ANALYSIS (طرق الوصول + Networks)، INTEGRATED_SOLUTION، ACTION_PLAN.
