@@ -97,6 +97,28 @@ func (c *Client) DeleteSetupKey(keyID string) error {
 }
 
 // peerIDByIP finds a NetBird peer object id by its mesh IP.
+// PeerLiveStatus returns a map[netbirdIP]connected for ALL peers, in one call.
+// NetBird is the source of truth for reachability — the dashboard uses this to
+// show real online/offline instead of relying solely on the agent heartbeat.
+// Empty map in mock mode or on error.
+func (c *Client) PeerLiveStatus() map[string]bool {
+	out := map[string]bool{}
+	if c.mock {
+		return out
+	}
+	var peers []struct {
+		IP        string `json:"ip"`
+		Connected bool   `json:"connected"`
+	}
+	if err := c.do(http.MethodGet, "/api/peers", nil, &peers); err != nil {
+		return out
+	}
+	for _, p := range peers {
+		out[p.IP] = p.Connected
+	}
+	return out
+}
+
 func (c *Client) peerIDByIP(ip string) (string, error) {
 	var peers []struct {
 		ID string `json:"id"`

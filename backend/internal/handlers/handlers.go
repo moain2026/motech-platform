@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -233,8 +234,36 @@ func (h *Handler) ListClients(w http.ResponseWriter, r *http.Request) {
 	if cs == nil {
 		cs = []models.Client{}
 	}
+	// NetBird is the source of truth for reachability. Pull live peer status
+	// once and map each client by its NetBird IP (peer_id holds the IP).
+	live := h.NB.PeerLiveStatus()
+	peerIPs := map[string]string{} // clientID -> netbird ip
+	if len(cs) > 0 {
+		rows, _ := h.DB.Query(`SELECT client_id, COALESCE(peer_id,'') FROM netbird_links`)
+		if rows != nil {
+			for rows.Next() {
+				var cid, pip string
+				if rows.Scan(&cid, &pip) == nil {
+					peerIPs[cid] = pip
+				}
+			}
+			rows.Close()
+		}
+	}
 	for i := range cs {
 		cs[i].Status = effectiveStatus(cs[i].Status, cs[i].LastSeen)
+		// If we have live NetBird data, let it refine online/offline: a client is
+		// only truly "online" if its NetBird peer is connected. If the peer is gone
+		// (disabled/deleted) it can never show online.
+		if cs[i].Status == "online" && len(live) > 0 {
+			ip := peerIPs[cs[i].ID]
+			if ip == "" {
+				continue // no peer ip yet; keep heartbeat-based status
+			}
+			if connected, known := live[ip]; known && !connected {
+				cs[i].Status = "offline"
+			}
+		}
 	}
 	writeJSON(w, http.StatusOK, cs)
 }
@@ -551,8 +580,16 @@ func (h *Handler) DisableClient(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	var nb models.NetbirdLink
 	_ = h.DB.Get(&nb, `SELECT * FROM netbird_links WHERE client_id=$1`, id)
-	if nb.PeerID != nil {
-		_ = h.NB.DeletePeer(*nb.PeerID)
+	// CRITICAL: disabling must actually CUT access by removing the NetBird peer,
+	// not just flip the status. Log failures (don't swallow) so a peer that
+	// can't be removed is visible instead of leaving access silently open.
+	if nb.PeerID != nil && *nb.PeerID != "" {
+		if err := h.NB.DeletePeer(*nb.PeerID); err != nil {
+			log.Printf("WARN disable: failed to delete netbird peer %q for client %s: %v", *nb.PeerID, id, err)
+		} else {
+			_, _ = h.DB.Exec(`UPDATE netbird_links SET peer_id=NULL, ssh_enabled=false, ssh_applied=false WHERE client_id=$1`, id)
+			h.logActivity("system", "netbird.peer_deleted", &id, nil)
+		}
 	}
 	_, err := h.DB.Exec(`UPDATE clients SET status='disabled', updated_at=now() WHERE id=$1`, id)
 	if err != nil {
