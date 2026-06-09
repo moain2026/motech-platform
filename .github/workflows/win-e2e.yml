@@ -77,6 +77,15 @@ jobs:
           echo EXIT=%ERRORLEVEL%
           type register-out.txt
 
+      - name: Run loop 75s (let apply_ssh re-up + built-in SSH start)
+        if: ${{ inputs.mode == 'full' }}
+        shell: pwsh
+        working-directory: agent
+        run: |
+          $p = Start-Process -FilePath .\motech-connect-cli.exe -ArgumentList 'run' -PassThru -WindowStyle Hidden
+          Start-Sleep -Seconds 75
+          Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+
       - name: Diagnose NetBird (did it install + join?)
         if: always()
         shell: pwsh
