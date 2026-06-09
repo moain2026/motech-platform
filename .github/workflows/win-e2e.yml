@@ -1,0 +1,101 @@
+name: Windows Agent E2E
+
+# بيئة اختبار ويندوز حقيقية (مجانية) للـ agent.
+# تُشغّل يدوياً من بيئة Genspark Claw عبر:  gh workflow run win-e2e.yml -f mode=build
+# الـ runner = windows-latest (admin, UAC off). تلتقط كل المخرجات كـ artifacts.
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "what to test"
+        type: choice
+        options: [build, register, full]
+        default: build
+      server_url:
+        description: "backend URL (for register/full)"
+        default: "https://qfetmfdn.gensparkclaw.com"
+      setup_token:
+        description: "one-time setup token from dashboard (for register/full)"
+        default: ""
+
+jobs:
+  windows-e2e:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+
+      - name: Show environment (sanity)
+        shell: pwsh
+        run: |
+          go version
+          (Get-CimInstance Win32_OperatingSystem).Caption
+          whoami
+          # confirm we are admin with UAC off (documented for hosted runners)
+          [bool](([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator))
+
+      - name: Build agent (both subsystems)
+        shell: pwsh
+        working-directory: agent
+        run: |
+          $env:GOOS="windows"; $env:GOARCH="amd64"
+          # service variant (no console window) + CLI variant (for debug output)
+          go build -trimpath -ldflags="-H windowsgui -s -w" -o motech-connect.exe ./cmd/agent
+          go build -trimpath -ldflags="-s -w" -o motech-connect-cli.exe ./cmd/agent
+          Get-Item motech-connect*.exe | Select Name,Length
+
+      - name: Smoke test — agent runs & prints usage (CLI variant)
+        shell: cmd
+        working-directory: agent
+        run: |
+          echo === running motech-connect-cli.exe with no args (expect usage) ===
+          motech-connect-cli.exe > usage.txt 2>&1
+          echo EXIT=%ERRORLEVEL%
+          type usage.txt
+
+      - name: Enable Windows OpenSSH Server (real Windows-only path)
+        shell: pwsh
+        run: |
+          Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0 -ErrorAction SilentlyContinue
+          Start-Service sshd -ErrorAction SilentlyContinue
+          (Get-Service sshd).Status
+
+      - name: Register against backend (only when mode != build)
+        if: ${{ inputs.mode != 'build' && inputs.setup_token != '' }}
+        shell: cmd
+        working-directory: agent
+        run: |
+          echo === register ===
+          motech-connect-cli.exe register --token ${{ inputs.setup_token }} --server ${{ inputs.server_url }} > register-out.txt 2>&1
+          echo EXIT=%ERRORLEVEL%
+          type register-out.txt
+
+      - name: Collect agent logs
+        if: always()
+        shell: pwsh
+        run: |
+          $log = "C:\ProgramData\Motech\agent.log"
+          if (Test-Path $log) { Copy-Item $log agent\agent.log } else { "no agent.log" | Out-File agent\agent.log }
+          if (Test-Path "C:\ProgramData\Motech\agent.json") {
+            # redact secrets, keep shape
+            (Get-Content "C:\ProgramData\Motech\agent.json" -Raw) -replace '("(agent_token|netbird_setupkey)"\s*:\s*")[^"]+', '$1<redacted>' | Out-File agent\agent.json.redacted
+          }
+
+      - name: Upload artifacts (all output)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: win-e2e-output
+          path: |
+            agent/usage.txt
+            agent/register-out.txt
+            agent/agent.log
+            agent/agent.json.redacted
+          if-no-files-found: ignore
