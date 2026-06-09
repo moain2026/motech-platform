@@ -77,6 +77,17 @@ jobs:
           echo EXIT=%ERRORLEVEL%
           type register-out.txt
 
+      - name: Diagnose NetBird (did it install + join?)
+        if: always()
+        shell: pwsh
+        run: |
+          "=== netbird.exe present? ===" | Tee-Object agent\netbird-diag.txt
+          $nb = @("C:\Program Files\NetBird\netbird.exe","$env:ProgramFiles\NetBird\netbird.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
+          ("netbird path: " + ($nb ?? 'NOT FOUND')) | Tee-Object -Append agent\netbird-diag.txt
+          Get-Service netbird -ErrorAction SilentlyContinue | Format-List Name,Status,StartType | Out-String | Tee-Object -Append agent\netbird-diag.txt
+          if ($nb) { & $nb status 2>&1 | Out-String | Tee-Object -Append agent\netbird-diag.txt }
+          if ($nb) { & $nb status --json 2>&1 | Out-String | Tee-Object -Append agent\netbird-diag.txt }
+
       - name: Collect agent logs
         if: always()
         shell: pwsh
@@ -97,5 +108,6 @@ jobs:
             agent/usage.txt
             agent/register-out.txt
             agent/agent.log
+            agent/netbird-diag.txt
             agent/agent.json.redacted
           if-no-files-found: ignore
