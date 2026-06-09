@@ -53,7 +53,7 @@ func (a *Agent) EnsureNetbirdInstalled() (string, error) {
 	defer os.Remove(tmp)
 
 	// NetBird ships an NSIS installer; /S = silent install.
-	cmd := exec.Command(tmp, "/S")
+	cmd := silentCmd(tmp, "/S")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("install netbird: %w (%s)", err, string(out))
 	}

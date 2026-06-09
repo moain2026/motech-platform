@@ -165,15 +165,15 @@ func (a *Agent) JoinNetbird() error {
 		return fmt.Errorf("تعذّر تثبيت NetBird تلقائياً: %w", err)
 	}
 	// Ensure the NetBird background service is installed & running first.
-	_ = exec.Command(path, "service", "install").Run()
-	_ = exec.Command(path, "service", "start").Run()
+	_ = silentCmd(path, "service", "install").Run()
+	_ = silentCmd(path, "service", "start").Run()
 	time.Sleep(2 * time.Second)
 
 	args := []string{"up", "--setup-key", a.state.NetbirdKey}
 	if a.state.NetbirdAPIURL != "" {
 		args = append(args, "--management-url", a.state.NetbirdAPIURL)
 	}
-	out, err := exec.Command(path, args...).CombinedOutput()
+	out, err := silentCmd(path, args...).CombinedOutput()
 	log.Printf("netbird up: %s", string(out))
 	if err != nil {
 		return fmt.Errorf("netbird up: %w (%s)", err, string(out))
@@ -187,7 +187,7 @@ func netbirdPeerIP() string {
 	if err != nil {
 		return ""
 	}
-	out, err := exec.Command(p, "status", "--json").Output()
+	out, err := silentCmd(p, "status", "--json").Output()
 	if err != nil {
 		return ""
 	}
@@ -202,6 +202,18 @@ func netbirdPeerIP() string {
 		return st.NetbirdIP
 	}
 	return ""
+}
+
+// InstalledPubKey returns the public key the backend handed us at register
+// (used to verify the key actually landed in authorized_keys).
+func (a *Agent) InstalledPubKey() string {
+	if a.state == nil {
+		return ""
+	}
+	if a.state.InstallPubKey != "" {
+		return a.state.InstallPubKey
+	}
+	return a.state.SSHPublicKey
 }
 
 // SetupAccess installs the backend-provided public key (idempotent) and ensures
@@ -360,7 +372,7 @@ func (a *Agent) applyCommands(cmds map[string]any) {
 	if b, _ := cmds["disabled"].(bool); b {
 		log.Println("server says DISABLED — removing access & leaving mesh")
 		if p, err := exec.LookPath("netbird"); err == nil {
-			_ = exec.Command(p, "down").Run()
+			_ = silentCmd(p, "down").Run()
 		}
 		return
 	}

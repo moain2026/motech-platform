@@ -62,17 +62,40 @@ func main() {
 		if *token == "" {
 			log.Fatal("--token is required for register")
 		}
+		// Sequential install: each step runs, reports, and ALWAYS continues to
+		// the next — the install never stalls mid-way. Non-fatal steps log a
+		// warning but do not abort, so we always reach the final verification.
+		step := func(n int, name string, fn func() error) {
+			fmt.Printf("[%d/5] %s ...\n", n, name)
+			if err := fn(); err != nil {
+				fmt.Printf("      ⚠ %s: %v (نُكمل)\n", name, err)
+			} else {
+				fmt.Printf("      ✓ %s\n", name)
+			}
+		}
+
+		// Step 1 is the only hard requirement: without a valid token there is
+		// nothing to install, so this one aborts on failure.
+		fmt.Println("[1/5] التسجيل بالرمز ...")
 		if err := ag.Register(*token); err != nil {
-			log.Fatalf("register failed: %v", err)
+			log.Fatalf("      ✗ فشل التسجيل: %v", err)
 		}
-		fmt.Println("✓ registered. joining NetBird and installing service...")
-		if err := ag.JoinNetbird(); err != nil {
-			log.Printf("warning: netbird join: %v", err)
+		fmt.Println("      ✓ تم التسجيل")
+
+		step(2, "الانضمام لشبكة NetBird", ag.JoinNetbird)
+		step(3, "تثبيت مفتاح SSH وتشغيل خادم SSH", ag.SetupAccess)
+		step(4, "تثبيت الخدمة في الخلفية", ag.InstallService)
+
+		// Step 5: verify everything is actually ready before declaring success.
+		fmt.Println("[5/5] التحقق من الجاهزية ...")
+		msg, verr := agent.VerifySSHReady(ag.InstalledPubKey())
+		if verr != nil {
+			fmt.Printf("      ⚠ %s\n", msg)
+			fmt.Println("\n⚠ اكتمل التثبيت مع تنبيهات — راجع الرسائل أعلاه.")
+		} else {
+			fmt.Printf("      ✓ %s\n", msg)
+			fmt.Println("\n✅ تم التثبيت بنجاح — الجهاز متصل وجاهز.")
 		}
-		if err := ag.InstallService(); err != nil {
-			log.Printf("warning: service install: %v", err)
-		}
-		fmt.Println("✓ done. agent is now connected.")
 	case "install":
 		if err := ag.InstallService(); err != nil {
 			log.Fatalf("install: %v", err)

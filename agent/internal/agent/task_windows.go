@@ -5,7 +5,6 @@ package agent
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -81,7 +80,7 @@ const taskXMLTemplate = `<?xml version="1.0" encoding="UTF-16"?>
 // and talks to the NetBird daemon which is its own service). Falls back to the
 // USERNAME/USERDOMAIN env vars.
 func currentTaskUser() string {
-	if out, err := exec.Command("whoami").Output(); err == nil {
+	if out, err := silentCmd("whoami").Output(); err == nil {
 		if u := strings.TrimSpace(string(out)); u != "" {
 			return u // e.g. "motech\\moain"
 		}
@@ -102,7 +101,7 @@ func installScheduledTask(exePath string) error {
 	if exePath == "" {
 		return fmt.Errorf("empty exe path")
 	}
-	_ = exec.Command("schtasks", "/Delete", "/TN", taskName, "/F").Run()
+	_ = silentCmd("schtasks", "/Delete", "/TN", taskName, "/F").Run()
 
 	user := currentTaskUser()
 	xml := strings.ReplaceAll(taskXMLTemplate, "%EXE%", exePath)
@@ -115,12 +114,12 @@ func installScheduledTask(exePath string) error {
 	}
 	defer os.Remove(tmp)
 
-	if out, err := exec.Command("schtasks", "/Create", "/TN", taskName,
+	if out, err := silentCmd("schtasks", "/Create", "/TN", taskName,
 		"/XML", tmp, "/F").CombinedOutput(); err != nil {
 		return fmt.Errorf("schtasks create /XML: %w (%s)", err, strings.TrimSpace(string(out)))
 	}
 	// Kick it off immediately so we don't wait for the next boot.
-	_ = exec.Command("schtasks", "/Run", "/TN", taskName).Run()
+	_ = silentCmd("schtasks", "/Run", "/TN", taskName).Run()
 	return nil
 }
 
@@ -140,14 +139,14 @@ func encodeUTF16LEWithBOM(s string) []byte {
 }
 
 func uninstallScheduledTask() error {
-	return exec.Command("schtasks", "/Delete", "/TN", taskName, "/F").Run()
+	return silentCmd("schtasks", "/Delete", "/TN", taskName, "/F").Run()
 }
 
 // stopRunningAgent kills any running motech-connect.exe EXCEPT the current
 // process, so the stable-location binary can be replaced without a file lock.
 func stopRunningAgent() {
 	self := os.Getpid()
-	_ = exec.Command("taskkill", "/F", "/FI", fmt.Sprintf("PID ne %d", self),
+	_ = silentCmd("taskkill", "/F", "/FI", fmt.Sprintf("PID ne %d", self),
 		"/IM", "motech-connect.exe").Run()
 	time.Sleep(1500 * time.Millisecond)
 }
