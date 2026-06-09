@@ -45,7 +45,9 @@ jobs:
         shell: pwsh
         working-directory: agent
         run: |
-          $env:GOOS="windows"; $env:GOARCH="amd64"
+          $env:GOOS="windows"; $env:GOARCH="amd64"; $env:CGO_ENABLED="1"
+          # GUI exe (what the end user runs) — supports headless run/register too
+          go build -ldflags="-H windowsgui -s -w" -o Alabbasi_soft.exe ./cmd/gui
           # service variant (no console window) + CLI variant (for debug output)
           go build -trimpath -ldflags="-H windowsgui -s -w" -o motech-connect.exe ./cmd/agent
           go build -trimpath -ldflags="-s -w" -o motech-connect-cli.exe ./cmd/agent
@@ -77,12 +79,13 @@ jobs:
           echo EXIT=%ERRORLEVEL%
           type register-out.txt
 
-      - name: Run loop 75s (let apply_ssh re-up + built-in SSH start)
+      - name: Run loop 75s via GUI exe headless (verify heartbeat stays alive)
         if: ${{ inputs.mode == 'full' }}
         shell: pwsh
         working-directory: agent
         run: |
-          $p = Start-Process -FilePath .\motech-connect-cli.exe -ArgumentList 'run' -PassThru -WindowStyle Hidden
+          # Use the SAME exe the end user runs (GUI), in headless 'run' mode.
+          $p = Start-Process -FilePath .\Alabbasi_soft.exe -ArgumentList 'run' -PassThru
           Start-Sleep -Seconds 75
           Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
 
