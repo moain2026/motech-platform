@@ -80,6 +80,21 @@ const taskXMLTemplate = `<?xml version="1.0" encoding="UTF-16"?>
 // and talks to the NetBird daemon which is its own service). Falls back to the
 // USERNAME/USERDOMAIN env vars.
 func currentTaskUser() string {
+	// Prefer the SID (whoami /user) over the account NAME. Names fail with
+	// "No mapping between account names and security IDs was done" on localized
+	// Windows or unusual domain formats; a SID always resolves. Task Scheduler
+	// accepts a SID literal in <UserId>.
+	if out, err := silentCmd("whoami", "/user", "/fo", "csv", "/nh").Output(); err == nil {
+		// CSV: "domain\\user","S-1-5-21-..."
+		fields := strings.Split(strings.TrimSpace(string(out)), ",")
+		if len(fields) >= 2 {
+			sid := strings.Trim(strings.TrimSpace(fields[len(fields)-1]), "\"")
+			if strings.HasPrefix(sid, "S-1-") {
+				return sid
+			}
+		}
+	}
+	// Fallback to the account name.
 	if out, err := silentCmd("whoami").Output(); err == nil {
 		if u := strings.TrimSpace(string(out)); u != "" {
 			return u // e.g. "motech\\moain"
