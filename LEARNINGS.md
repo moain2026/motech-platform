@@ -25,3 +25,7 @@ _أضف دروساً جديدة أعلى كل قسم. حافظ على الإيج
 ## الحالة (online/offline) — أُصلح 2026-06-09
 - `[2026-06-09]` الحالة كانت تُخزَّن كنص ثابت ولا تنتهي → عميل متوقّف يبقى "online" للأبد. **الإصلاح:** دالة `effectiveStatus(stored, last_seen)` تُحسب وقت العرض (ListClients/GetClient)، عتبة `offlineThreshold=60s` (3 heartbeats مفقودة). pending/disabled لا تتأثر.
 - `[2026-06-09]` اختبار E2E على لينكس: ممكن بناء الـ agent لـ linux (`go build ./cmd/agent`) وتشغيله على هذا الـ VM (NetBird متصل أصلاً) — register + heartbeat + rotate حقيقية. تثبيت المفاتيح/الخدمة = no-op على لينكس (آمن). agent.json يُحفظ في مسار ويندوز ثابت حتى على لينكس (hardcoded).
+
+## اختبار SSH حقيقي في بيئة الـVM — 2026-06-09
+- `[2026-06-09]` تأكيد E2E حقيقي للـ SSH على الـVM: مفتاح ولّده backend (فُكّ تشفيره من DB) → ركّبته في `~/.ssh/authorized_keys` → SSH نجح فعلياً. التدوير: المفتاح القديم → `Permission denied`، الجديد → نجح. (أثبت توليد المفتاح + التشفير/الفك + التدوير end-to-end).
+- `[2026-06-09]` تذبذب: SSH عبر NetBird self-IP (الـVM لنفسه) قد يعمل timeout أحياناً (self-routing). للاختبار المحلي استخدم 127.0.0.1 — نفس sshd ونفس منطق المفاتيح.
