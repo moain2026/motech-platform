@@ -663,9 +663,10 @@ func (h *Handler) AgentRegister(w http.ResponseWriter, r *http.Request) {
 }
 
 type heartbeatReq struct {
-	PeerID    string `json:"peer_id"`
-	RotatedOK bool   `json:"rotated_ok"` // agent confirms it installed the latest public key
-	LoginUser string `json:"login_user"` // OS login account (for connection info)
+	PeerID     string `json:"peer_id"`
+	RotatedOK  bool   `json:"rotated_ok"`  // agent confirms it installed the latest public key
+	LoginUser  string `json:"login_user"`  // OS login account (for connection info)
+	SSHApplied bool   `json:"ssh_applied"` // agent confirms it re-upped with --allow-server-ssh
 }
 
 // AgentHeartbeat updates last_seen + the agent's NetBird peer_id, and returns
@@ -703,6 +704,9 @@ func (h *Handler) AgentHeartbeat(w http.ResponseWriter, r *http.Request) {
 	if req.LoginUser != "" {
 		_, _ = h.DB.Exec(`UPDATE clients SET login_user=$1 WHERE id=$2`, req.LoginUser, clientID)
 	}
+	if req.SSHApplied {
+		_, _ = h.DB.Exec(`UPDATE netbird_links SET ssh_applied=true WHERE client_id=$1`, clientID)
+	}
 	if req.RotatedOK {
 		res, _ := h.DB.Exec(`UPDATE ssh_keys SET rotated_at=now() WHERE client_id=$1 AND active=true AND rotated_at IS NULL`, clientID)
 		if res != nil {
@@ -726,10 +730,20 @@ func (h *Handler) AgentHeartbeat(w http.ResponseWriter, r *http.Request) {
 	if pendingRotate {
 		_ = h.DB.Get(&installPub, `SELECT COALESCE(public_key,'') FROM ssh_keys WHERE client_id=$1 AND active=true LIMIT 1`, clientID)
 	}
+	// apply_ssh: ask the agent to (re)enable NetBird's built-in SSH server once
+	// the dashboard side (ssh_enabled) is on but the agent hasn't applied it yet.
+	// NetBird needs `down && up --allow-server-ssh` AFTER ssh_enabled propagates
+	// (bug #2816), so the first install's up() isn't enough on its own.
+	var sshEnabled, sshApplied bool
+	_ = h.DB.Get(&sshEnabled, `SELECT COALESCE(ssh_enabled,false) FROM netbird_links WHERE client_id=$1`, clientID)
+	_ = h.DB.Get(&sshApplied, `SELECT COALESCE(ssh_applied,false) FROM netbird_links WHERE client_id=$1`, clientID)
+	applySSH := sshEnabled && !sshApplied
+
 	writeJSON(w, http.StatusOK, map[string]any{
 		"disabled":       status == "disabled",
 		"rotate":         pendingRotate,
 		"install_pubkey": installPub,
+		"apply_ssh":      applySSH,
 	})
 }
 

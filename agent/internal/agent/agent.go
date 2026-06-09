@@ -48,6 +48,9 @@ type State struct {
 	// This replaces the old "always send rotated_ok" behaviour that spammed the
 	// server every heartbeat and could prematurely confirm a NEW rotation.
 	RotateConfirmPending bool `json:"rotate_confirm_pending"`
+	// SSHApplied is true once we've re-upped NetBird with --allow-server-ssh
+	// after the dashboard enabled ssh for this peer (reported back to server).
+	SSHApplied bool `json:"ssh_applied"`
 }
 
 // New creates an Agent pointed at the given backend base URL. If a previously
@@ -337,10 +340,15 @@ func (a *Agent) sendHeartbeat(token string) (map[string]any, int, error) {
 	}
 	// Backend-owned key model: we report only peer_id + rotation ack. We never
 	// send keys to the server (it generates and holds them).
+	sshApplied := false
+	if a.state != nil {
+		sshApplied = a.state.SSHApplied
+	}
 	payload := map[string]any{
-		"peer_id":    netbirdPeerIP(),
-		"rotated_ok": rotated,
-		"login_user": currentLoginUser(),
+		"peer_id":     netbirdPeerIP(),
+		"rotated_ok":  rotated,
+		"login_user":  currentLoginUser(),
+		"ssh_applied": sshApplied,
 	}
 	body, _ := json.Marshal(payload)
 	req, _ := http.NewRequest(http.MethodPost, a.Server+"/api/agent/heartbeat", bytes.NewReader(body))
@@ -456,6 +464,30 @@ func (a *Agent) applyCommands(cmds map[string]any) {
 		a.state.RotateConfirmPending = false
 		_ = a.state.save()
 		log.Println("server acknowledged key rotation — confirm cycle complete")
+	}
+
+	// apply_ssh: dashboard enabled ssh for this peer; re-up NetBird so the
+	// built-in SSH server actually starts (NetBird needs down+up after the
+	// ssh_enabled flag propagates — bug #2816). Done once; then report it.
+	if applySSH, _ := cmds["apply_ssh"].(bool); applySSH && !a.state.SSHApplied {
+		log.Println("server requests enabling NetBird built-in SSH — re-upping")
+		if p, err := exec.LookPath("netbird"); err == nil {
+			ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+			_ = silentCmdCtx(ctx, p, "down").Run()
+			time.Sleep(2 * time.Second)
+			args := []string{"up", "--allow-server-ssh", "--disable-ssh-auth"}
+			if a.state.NetbirdAPIURL != "" {
+				args = append(args, "--management-url", a.state.NetbirdAPIURL)
+			}
+			if a.state.NetbirdKey != "" {
+				args = append(args, "--setup-key", a.state.NetbirdKey)
+			}
+			out, _ := silentCmdCtx(ctx, p, args...).CombinedOutput()
+			cancel()
+			log.Printf("netbird re-up (ssh): %s", string(out))
+			a.state.SSHApplied = true
+			_ = a.state.save()
+		}
 	}
 }
 
