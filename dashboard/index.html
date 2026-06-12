@@ -476,9 +476,21 @@ function app(){
     },
     logout(){this.token='';localStorage.removeItem('motech_token')},
     saveDark(){localStorage.setItem('motech_dark',this.dark?'1':'0')},
-    async refresh(){await Promise.all([this.load(),this.loadActivity()])},
-    async load(){const r=await fetch('/api/clients',{headers:this.hdr()});if(r.ok)this.clients=await r.json()},
-    async loadActivity(){const r=await fetch('/api/activity',{headers:this.hdr()});if(r.ok){this.activity=await r.json();}},
+    // authFetch: يلفّ fetch ويكتشف انتهاء الجلسة (401). لو التوكن منتهٍ/غير صالح،
+    // يسجّل خروج تلقائياً ويظهر شاشة الدخول بدل ما تظهر العدّادات صفر بصمت.
+    async authFetch(url,opts){
+      opts=opts||{}; opts.headers=Object.assign({},this.hdr(),opts.headers||{});
+      const r=await fetch(url,opts);
+      if(r.status===401){
+        this.logout();
+        this.toast('انتهت الجلسة — يرجى تسجيل الدخول من جديد','error');
+        throw new Error('unauthorized');
+      }
+      return r;
+    },
+    async refresh(){try{await Promise.all([this.load(),this.loadActivity()])}catch(e){}},
+    async load(){const r=await this.authFetch('/api/clients');if(r.ok)this.clients=await r.json()},
+    async loadActivity(){const r=await this.authFetch('/api/activity');if(r.ok){this.activity=await r.json();}},
     dayMore:{},
     showMore(day){this.dayMore[day]=(this.dayMore[day]||0)+50},
     get total(){return this.clients.length},
@@ -542,7 +554,7 @@ function app(){
     async addClient(){
       if(!this.form.name)return;this.loading=true;
       try{
-        const r=await fetch('/api/clients',{method:'POST',headers:this.hdr(),body:JSON.stringify(this.form)});
+        const r=await this.authFetch('/api/clients',{method:'POST',body:JSON.stringify(this.form)});
         if(r.ok){this.created=await r.json();await this.refresh();this.toast('تم إنشاء العميل','success');}
         else this.toast('فشل الإنشاء','error');
       }finally{this.loading=false}
@@ -550,20 +562,20 @@ function app(){
     setupURL(){return this.created&&this.created.setup_url?(location.origin+this.created.setup_url):''},
     async copyConn(c){
       try{
-        const r=await fetch('/api/clients/'+c.id+'/connection',{headers:this.hdr()});
+        const r=await this.authFetch('/api/clients/'+c.id+'/connection');
         if(!r.ok){this.toast('تعذّر جلب معلومات الاتصال','error');return}
         const j=await r.json(); j.name=c.name; this.conn=j;
       }catch(e){this.toast('خطأ في الاتصال','error')}
     },
-    async rotate(c){await fetch('/api/clients/'+c.id+'/rotate-key',{method:'POST',headers:this.hdr()});this.toast('تم طلب تدوير المفتاح','info');this.refresh()},
-    async disable(c){if(!confirm('تعطيل '+c.name+'؟'))return;await fetch('/api/clients/'+c.id+'/disable',{method:'POST',headers:this.hdr()});this.toast('تم التعطيل','info');this.refresh()},
-    async del(c){if(!confirm('حذف '+c.name+' نهائياً؟'))return;await fetch('/api/clients/'+c.id,{method:'DELETE',headers:this.hdr()});this.toast('تم الحذف','info');this.refresh()},
+    async rotate(c){try{await this.authFetch('/api/clients/'+c.id+'/rotate-key',{method:'POST'});this.toast('تم طلب تدوير المفتاح','info');this.refresh()}catch(e){}},
+    async disable(c){if(!confirm('تعطيل '+c.name+'؟'))return;try{await this.authFetch('/api/clients/'+c.id+'/disable',{method:'POST'});this.toast('تم التعطيل','info');this.refresh()}catch(e){}},
+    async del(c){if(!confirm('حذف '+c.name+' نهائياً؟'))return;try{await this.authFetch('/api/clients/'+c.id,{method:'DELETE'});this.toast('تم الحذف','info');this.refresh()}catch(e){}},
     openEdit(c){this.editC={id:c.id,name:c.name,branch:c.branch||'',contact_name:c.contact_name||'',contact_phone:c.contact_phone||''}},
-    async loadProfile(){try{const r=await fetch('/api/me',{headers:this.hdr()});if(r.ok){const j=await r.json();this.prof.email=j.email;this.prof.new_password='';this.prof.current_password='';}}catch(e){}},
+    async loadProfile(){try{const r=await this.authFetch('/api/me');if(r.ok){const j=await r.json();this.prof.email=j.email;this.prof.new_password='';this.prof.current_password='';}}catch(e){}},
     async saveProfile(){
       if(!this.prof.current_password)return; this.profLoading=true;
       try{
-        const r=await fetch('/api/me',{method:'PUT',headers:this.hdr(),body:JSON.stringify({current_password:this.prof.current_password,email:this.prof.email,new_password:this.prof.new_password})});
+        const r=await this.authFetch('/api/me',{method:'PUT',body:JSON.stringify({current_password:this.prof.current_password,email:this.prof.email,new_password:this.prof.new_password})});
         const j=await r.json().catch(()=>({}));
         if(r.ok){
           if(j.token){this.token=j.token;localStorage.setItem('motech_token',this.token);} // keep session alive
@@ -575,7 +587,7 @@ function app(){
     async saveEdit(){
       if(!this.editC||!this.editC.name)return; this.editLoading=true;
       try{
-        const r=await fetch('/api/clients/'+this.editC.id,{method:'PUT',headers:this.hdr(),body:JSON.stringify({name:this.editC.name,branch:this.editC.branch,contact_name:this.editC.contact_name,contact_phone:this.editC.contact_phone})});
+        const r=await this.authFetch('/api/clients/'+this.editC.id,{method:'PUT',body:JSON.stringify({name:this.editC.name,branch:this.editC.branch,contact_name:this.editC.contact_name,contact_phone:this.editC.contact_phone})});
         if(r.ok){this.editC=null;await this.refresh();this.toast('تم حفظ التعديلات','success');}
         else this.toast('فشل الحفظ','error');
       }catch(e){this.toast('خطأ في الاتصال','error')}finally{this.editLoading=false}
